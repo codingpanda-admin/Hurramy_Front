@@ -1,0 +1,43 @@
+name: Deploy Frontend to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      # 1. GitHub compila la imagen de Docker para que tu EC2 no sufra por falta de RAM
+      - name: Build Docker Image
+        run: |
+          docker build -t hurammy-frontend:latest .
+
+      # 2. Nos conectamos por SSH a la EC2 usando tu llave .pem para actualizar el contenedor
+      - name: SSH and Update Container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 18.219.229.98
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /hurammy
+            # Detener y eliminar el contenedor viejo del frontend
+            sudo docker stop shortvideo-frontend || true
+            sudo docker rm shortvideo-frontend || true
+            
+            # Re-construir localmente o levantar con compose si usas docker-compose
+            # Si usas docker run directo:
+            sudo docker run -d --name shortvideo-frontend -p 80:80 -p 443:443 --restart always hurammy-frontend:latest
