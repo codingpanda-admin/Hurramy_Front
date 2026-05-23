@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
@@ -17,6 +17,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
 
   const [currentLang, setCurrentLang] = useState(storedLang);
   const navigate = useNavigate();
+  const location = useLocation();
   const langRef = useRef(null);
   const userMenuRef = useRef(null);
   const searchRef = useRef(null);
@@ -24,6 +25,18 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
   const lastScrollY = useRef(0);
 
   const t = translations[currentLang] || translations.en;
+  const navItems = [
+    { to: '/', label: t.sidebar?.home || 'Home' },
+    { to: '/trending', label: t.sidebar?.trending || 'Trending' },
+    { to: '/following', label: t.sidebar?.following || 'Following' },
+    { to: '/favorites', label: t.sidebar?.favorites || 'Favorites' },
+    { to: '/campaigns', label: t.sidebar?.campaigns || 'Campaigns' },
+    { to: '/upload', label: t.sidebar?.upload || 'Upload' },
+  ];
+
+  if (user?.role === 'admin') {
+    navItems.push({ to: '/admin', label: 'Panel Admin' });
+  }
 
   // Generate search suggestions based on videos and query
   const suggestions = useMemo(() => {
@@ -306,25 +319,23 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
 
   return (
     <>
-    <header style={{
-      position: 'sticky', top: 0, zIndex: 20,
-      backdropFilter: 'blur(12px)',
-      background: 'linear-gradient(180deg, rgba(4, 15, 52, 0.88), rgba(3, 12, 40, 0.74))',
-      borderBottom: '1px solid var(--line)',
-      height: '60px',
-    }}>
+    <header className="header-shell">
       <div className="header-inner">
-        {onToggleSidebar && (
-          <button className="header-hamburger" onClick={onToggleSidebar} aria-label="Toggle menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-          </button>
-        )}
-
         <Link to="/" className="header-brand">
           <img src="/logo.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
         </Link>
+
+        <nav className="header-nav" aria-label="Primary navigation">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`header-nav-link${location.pathname === item.to ? ' active' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
         {/* Desktop search - hidden on mobile via CSS */}
         <div className="header-search-wrapper header-search-desktop" ref={searchRef}>

@@ -29,6 +29,7 @@ function Home() {
   const [likedVideos, setLikedVideos] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shareModal, setShareModal] = useState({ open: false, url: '', title: '' });
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
   
   // Intersection observer for infinite scroll
   const { ref: loadMoreRef, inView } = useInView({
@@ -36,12 +37,9 @@ function Home() {
     rootMargin: '100px',
   });
 
-  // Announcements: open by default, user can close
-  const [announceOpen, setAnnounceOpen] = useState(true);
-  const [exploreOpen, setExploreOpen] = useState(false);
+  const [announceOpen, setAnnounceOpen] = useState(false);
+  const [exploreOpen] = useState(false);
   const [allAnnouncements, setAllAnnouncements] = useState([]);
-
-  // Announcement rotation
   const [annIdx, setAnnIdx] = useState(0);
   const timerRef = useRef(null);
   const progressRef = useRef(null);
@@ -63,7 +61,6 @@ function Home() {
 
   useEffect(() => {
     loadVideos();
-    loadCampaignAnnouncements();
   }, []);
 
   useEffect(() => {
@@ -344,7 +341,12 @@ function Home() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Header onSearch={handleSearch} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} videos={videos} initialQuery={searchQuery} />
+      <Header
+        onSearch={handleSearch}
+        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        videos={videos}
+        initialQuery={searchQuery}
+      />
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -354,12 +356,21 @@ function Home() {
         />
       )}
 
+      <section className="major_announcement" aria-label="Major announcement">
+        <button
+          type="button"
+          className="major_announcement_btn"
+          onClick={() => setInstructionsOpen(true)}
+        >
+          Instructions
+        </button>
+      </section>
+
       <div className="app-layout">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         {/* Main Content - Grid */}
-        <main style={{ padding: '18px', overflowY: 'auto' }}>
-
+        <main className="home-main-pane" style={{ padding: '18px', overflowY: 'auto' }}>
           {/* Toggle row: Explore Videos + re-open announcements if closed */}
           <div className="home-toggle-row">
             {!announceOpen && totalAnn > 0 && (
@@ -376,19 +387,6 @@ function Home() {
               </button>
             )}
 
-            {/* Explore Videos toggle */}
-            <button
-              className={`home-toggle-btn ${exploreOpen ? 'open' : ''}`}
-              onClick={() => setExploreOpen(prev => !prev)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              {t.home.title}
-              <svg className={`home-toggle-chevron ${exploreOpen ? 'open' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
           </div>
 
           {/* Announcements carousel -- campaigns + system -- open by default, closable */}
@@ -528,40 +526,6 @@ function Home() {
               </section>
             );
           })()}
-
-          {/* Explore Videos section (collapsible) */}
-          {exploreOpen && (
-            <section className="home-hero">
-              <h1 className="home-hero-title">{t.home.title}</h1>
-              <p className="home-hero-subtitle">{t.home.subtitle}</p>
-              <div className="home-chips">
-                {categories.map(cat => (
-                  <button
-                    key={cat.key}
-                    className={`home-chip ${activeCategory === cat.key ? 'active' : ''}`}
-                    onClick={() => setActiveCategory(cat.key)}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Always-visible category chips */}
-          {!exploreOpen && (
-            <div className="home-chips" style={{ marginBottom: '14px' }}>
-              {categories.map(cat => (
-                <button
-                  key={cat.key}
-                  className={`home-chip ${activeCategory === cat.key ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat.key)}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Video Grid */}
           {loading ? (
@@ -709,6 +673,79 @@ function Home() {
         url={shareModal.url}
         title={shareModal.title}
       />
+
+      {instructionsOpen && (
+        <div className="major_announcement_modal_overlay" onClick={() => setInstructionsOpen(false)}>
+          <div className="major_announcement_modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="major-announcement-title">
+            <div className="major_announcement_modal_header">
+              <h2 id="major-announcement-title">Instructions</h2>
+              <button
+                type="button"
+                className="major_announcement_modal_close"
+                onClick={() => setInstructionsOpen(false)}
+                aria-label="Close instructions"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="major_announcement_modal_body">
+              <h3>大专联首届“华府系列挑战赛”暨“华莱美（Hurammy）大奖赛”年度选拔赛实施细则</h3>
+
+              <h4>一、赛事宗旨</h4>
+              <p>音乐跨越语言与国界，歌声连接世界与梦想。为促进华府及全球华人及国际音乐爱好者的文化交流，打造具有国际影响力的数字音乐赛事品牌，特举办首届“华府系列挑战赛”暨“华莱美（Hurammy）大奖赛”年度选拔赛。</p>
+              <p>赛事由大专院校校友会联合会（CAAGW）主办，技术支持依托 SceneX AI 平台、人工智能评测技术及全球社交媒体传播体系，通过线上海选、区域晋级赛和年度全球总决赛相结合的方式，发掘优秀歌唱人才，打造全球华人最具影响力的卡拉 OK 赛事品牌。</p>
+              <p>以艺术交流促进社区融合，以数字科技赋能文化传播。通过线上线下结合的创新模式，发掘和培养优秀艺术人才，打造具有华府地区影响力并辐射全美及全球的文化品牌赛事。</p>
+
+              <h4>二、参赛资格</h4>
+              <p><strong>报名对象：</strong>面向华府、美国及海外华人、华裔及热爱中华文化人士开放；国籍、职业不限；参赛者须遵守赛事规则并同意作品授权协议。</p>
+              <p><strong>年龄分组：</strong>青少年组：18 周岁以下（含 18 周岁）；成人组：18 周岁 - 59 周岁；乐龄组：60 周岁以上。</p>
+              <p><strong>专业分组：</strong>专业组包括艺术院校在校生及毕业生、专业演艺从业人员、具有专业艺术训练背景者；业余组包括非职业艺术从业者及社区艺术爱好者。组委会有权根据实际情况调整选手组别。</p>
+              <p><strong>演唱类别：</strong>美声歌曲（包括中国艺术歌曲及古诗词艺术歌曲）、流行及通俗歌曲、音乐剧选段等。</p>
+
+              <h4>三、比赛项目</h4>
+              <p><strong>“唱响华府”卡拉 OK 挑战赛：</strong>演唱语言不限，曲目内容健康向上。允许独唱、对唱及组合形式，并可定期开放现场 PK 形式。月赛视频时长控制在 1 分钟以内，季赛及年度赛视频时长控制在 3 分钟以内。专业评委老师 3 - 5 位。</p>
+              <p><strong>“影动视界”短剧创意大奖赛：</strong>参赛类别包括原创短剧、动漫短剧、真人短剧。作品时长 1 - 5 分钟，内容积极健康，鼓励原创作品。专业评委老师 3 - 5 位。</p>
+
+              <h4>四、赛事流程</h4>
+              <p><strong>第一阶段：月赛视频上传。</strong>宣传开始后每个月进行。选手登录 Hurammy.com 注册报名，上传符合要求的参赛视频及相关资料，开启全网互动投票、打榜、排名、热门视频循环播放等，专业评委发布评语，AI 智能评分同步启动。</p>
+              <p><strong>晋级规则：</strong>综合成绩 = 专业评分 × 70% + 网络人气评分 × 30%。各组别前 20 名晋级季度赛，月赛前三有奖品。</p>
+              <p><strong>第二阶段：季度晋级赛。</strong>每季度举办一次，内容包括专业导师辅导培训、录音棚及摄影棚专业制作、重新发布作品参与人气竞赛、专家评委集中评审。各组别前 5 名进入年度总决赛。</p>
+              <p><strong>第三阶段：年度总决赛。</strong>时间为 2027 年年初或春季，形式包括现场演出、网络直播、嘉宾表演、颁奖典礼。</p>
+
+              <h4>五、奖项设置</h4>
+              <p><strong>综合大奖：</strong>专业组冠军、亚军、季军；业余组冠军、亚军、季军。</p>
+              <p><strong>唱响华府单项荣誉奖：</strong>最受欢迎歌手奖、最佳视频制作奖、最佳台风奖、最佳人气奖、最具潜力新人奖。</p>
+              <p><strong>影动视界单项荣誉奖：</strong>最佳原创剧本奖、最佳导演奖、最佳创意奖、最佳制作奖、最佳演员奖。</p>
+              <p><strong>特别奖：</strong>华莱美年度艺术家奖、华莱美杰出贡献奖、最佳组织奖、优秀义工团队奖、最佳合作伙伴奖。</p>
+
+              <h4>六、奖金及奖品建议</h4>
+              <p>具体奖金根据赞助情况调整。</p>
+
+              <h4>七、知识产权与授权</h4>
+              <ul>
+                <li>参赛者保证拥有作品合法版权。</li>
+                <li>作品不得侵犯第三方知识产权。</li>
+                <li>参赛作品授权组委会用于赛事宣传、展播及推广。</li>
+                <li>作者保留作品署名权。</li>
+              </ul>
+
+              <h4>八、违规处理</h4>
+              <p>出现以下情况之一，组委会有权取消参赛资格：抄袭、剽窃作品；虚假报名资料；刷票、恶意操纵数据；发布违法或不当内容；影响赛事公平公正的行为。</p>
+
+              <h4>九、赛事宣传主题建议</h4>
+              <ul>
+                <li>华府之声，世界共鸣；科技赋能，梦想启航。</li>
+                <li>唱响华府，影动世界；汇聚英才，共创华莱美。</li>
+                <li>Hurammy Awards——让每一份才华都被世界看见。</li>
+                <li>One Voice • One World</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       <div className={`toast ${toast.show ? 'show' : ''}`}>
