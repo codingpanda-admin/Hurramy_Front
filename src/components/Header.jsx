@@ -309,7 +309,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
     <header style={{
       position: 'sticky', top: 0, zIndex: 20,
       backdropFilter: 'blur(12px)',
-      background: 'rgba(7, 10, 18, 0.75)',
+      background: 'linear-gradient(180deg, rgba(4, 15, 52, 0.88), rgba(3, 12, 40, 0.74))',
       borderBottom: '1px solid var(--line)',
       height: '60px',
     }}>
