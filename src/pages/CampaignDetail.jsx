@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
 import { getVideoUrl } from '../utils/mediaUtils';
+import JoinVideoSidebar from '../components/JoinVideoSidebar';
 
 function CampaignDetail() {
   const { id } = useParams();
@@ -53,12 +54,13 @@ function CampaignDetail() {
   };
 
   const loadMyVideos = () => {
-    // CORRECCIÓN: Uso de API_URL dinámica
-    axios.get(`${API_URL}/videos`)
+    // Use protected endpoint to fetch only user's videos
+    const token = localStorage.getItem('token');
+    axios.get(`${API_URL}/videos/my`, { headers: { Authorization: `Bearer ${token}` } })
       .then(res => {
-        const mine = res.data.filter(v => v.userId === user.id);
-        setMyVideos(mine);
-      });
+        setMyVideos(res.data);
+      })
+      .catch(err => console.error('Error loading my videos:', err));
   };
 
   const handleJoin = async () => {
@@ -298,43 +300,6 @@ function CampaignDetail() {
               </div>
             </div>
           </div>
-
-          {user && myVideos.length > 0 && (
-            <div style={{
-              marginTop: '14px',
-              padding: '12px',
-              background: 'rgba(0,0,0,0.2)',
-              borderRadius: '14px',
-              display: 'flex',
-              gap: '10px',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: '13px', fontWeight: 600 }}>{cd.joinWithVideo || 'Join with your video:'}</span>
-              <select
-                className="select"
-                value={selectedVideoId}
-                onChange={e => setSelectedVideoId(e.target.value)}
-                style={{
-                  border: '1px solid var(--line)',
-                  background: 'var(--bg)',
-                  color: 'var(--text)',
-                  borderRadius: '14px',
-                  padding: '10px 12px',
-                  minWidth: '200px',
-                  flex: '1 1 200px',
-                }}
-              >
-                <option value="">{cd.selectVideo || '-- Select Video --'}</option>
-                {myVideos.map(v => (
-                  <option key={v.id} value={v.id}>{v.title}</option>
-                ))}
-              </select>
-              <button onClick={handleJoin} className="btn primary">
-                {cd.joinCampaign || 'Join Campaign'}
-              </button>
-            </div>
-          )}
         </section>
 
         <section className="panel campaign-controls-bar">
@@ -466,18 +431,7 @@ function CampaignDetail() {
                         {getRankBadge(index)}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div className="thumb" style={{
-                          width: '100%',
-                          height: '44px',
-                          borderRadius: '16px',
-                          border: '1px solid var(--line)',
-                          background: `
-                            radial-gradient(220px 120px at 20% 20%, rgba(25,211,255,0.18), transparent 60%),
-                            radial-gradient(240px 140px at 80% 30%, rgba(124,92,255,0.22), transparent 65%),
-                            rgba(0,0,0,0.22)
-                          `,
-                          overflow: 'hidden',
-                        }}></div>
+                        <img src={video.thumbnailUrl || video.videoUrl} alt={video.title} style={{ width: '100%', height: '44px', borderRadius: '16px', border: '1px solid var(--line)', objectFit: 'cover' }} />
                         <p className="title" style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 900, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {video.title}
                         </p>
@@ -525,7 +479,14 @@ function CampaignDetail() {
             )}
           </section>
 
-          <aside className="panel preview" style={{ padding: '12px' }}>
+          <aside className="panel right-column" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <JoinVideoSidebar
+              myVideos={myVideos}
+              selectedVideoId={selectedVideoId}
+              setSelectedVideoId={setSelectedVideoId}
+              handleJoin={handleJoin}
+              placeholderText={cd.searchPlaceholder || '-- Buscar video --'}
+            />
             {previewVideo ? (
               <>
                 <div className="player" style={{
@@ -543,7 +504,7 @@ function CampaignDetail() {
                     controls
                     preload="metadata"
                     muted={globalMuted}
-                    src={getVideoUrl(previewVideo.videoUrl)}
+                    src={previewVideo.videoUrl}
                     style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}
                   />
                 </div>

@@ -37,6 +37,7 @@ const HeartIcon = ({ filled }) => (
   </Ico>
 );
 const ShareIcon = () => (<Ico size={14}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></Ico>);
+const FlowerIcon = () => (<span style={{ fontSize: '15px', lineHeight: '1' }}>🌸</span>);
 
 function VideoPlayer() {
   const { id } = useParams();
@@ -46,6 +47,9 @@ function VideoPlayer() {
   const [likes, setLikes] = useState(0);
   const [comments, setComments] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
+  const [videoFlowers, setVideoFlowers] = useState(0);
+  const [showFlowerModal, setShowFlowerModal] = useState(false);
+  const [flowersToGive, setFlowersToGive] = useState(1);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -129,6 +133,7 @@ function VideoPlayer() {
         setVideo(res.data);
         setLikes(res.data.Likes?.length || 0);
         setComments(res.data.Comments || []);
+        setVideoFlowers(res.data.flowers || 0);
         if (user && res.data.Likes) {
           setIsLiked(res.data.Likes.some(like => like.userId === user.id));
         }
@@ -435,6 +440,39 @@ function VideoPlayer() {
       }
     } catch (error) {
       showToast(error.response?.data?.message || t.common?.error || 'Error');
+    }
+  };
+
+  const openFlowerModal = () => {
+    if (!user) {
+      showToast(vp.signInToGiveFlowers || 'Sign in to give flowers');
+      return;
+    }
+    setFlowersToGive(1);
+    setShowFlowerModal(true);
+  };
+
+  const handleGiveFlowersSubmit = async () => {
+    if (!user) return;
+    try {
+      const token = localStorage.getItem('token');
+      const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+      
+      const res = await axios.post(`${API_URL}/videos/${id}/flowers`, {
+        userId: user.id,
+        flowersCount: flowersToGive
+      }, authHeaders);
+
+      setVideoFlowers(res.data.videoFlowersTotal);
+      
+      // Update local storage user coins
+      const updatedUser = { ...user, waiCoins: res.data.remainingCoins };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      setShowFlowerModal(false);
+      showToast(vp.flowersGiven || 'Flowers given successfully!');
+    } catch (error) {
+      showToast(error.response?.data?.message || vp.errorGivingFlowers || 'Error giving flowers');
     }
   };
 
@@ -838,30 +876,43 @@ function VideoPlayer() {
                     {video.title}
                   </h1>
 
-                  <div className="metaLine" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span className="muted">{vp.by || 'By'} <b>@{video.User?.email?.split('@')[0] || 'Creator'}</b></span>
-                    <span className="muted">|</span>
-                    <span className="muted"><span className="count">{(video.views || 0).toLocaleString()}</span> {vp.views || 'views'}</span>
-                    <span className="muted">|</span>
-                    <span className="muted"><span className="count">{comments.length}</span> {vp.comments || 'comments'}</span>
+                  <div className="metaLine" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span className="muted">{vp.by || 'By'} <b>@{video.User?.email?.split('@')[0] || 'Creator'}</b></span>
+                      <span className="muted">|</span>
+                      <span className="muted"><span className="count">{(video.views || 0).toLocaleString()}</span> {vp.views || 'views'}</span>
+                      <span className="muted">|</span>
+                      <span className="muted"><span className="count">{comments.length}</span> {vp.comments || 'comments'}</span>
+                    </div>
 
-                    <span style={{ flex: 1 }} />
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button onClick={handleOpenShare} className="btn" style={{ padding: '8px 12px', fontSize: '12px' }} title={vp.shareVideo || 'Share'}>
+                        <ShareIcon /> <span style={{ whiteSpace: 'nowrap' }}>{vp.shareVideo || 'Share'}</span>
+                      </button>
 
-                    <button onClick={handleOpenShare} className="btn" style={{ padding: '8px 12px', fontSize: '12px' }} title={vp.shareVideo || 'Share'}>
-                      <ShareIcon /> <span>{vp.shareVideo || 'Share'}</span>
-                    </button>
+                      <button
+                        onClick={openFlowerModal}
+                        className="likeBtn"
+                        role="button"
+                        tabIndex={0}
+                      >
+                        <FlowerIcon />
+                        <b><span className="count">{videoFlowers.toLocaleString()}</span></b>
+                        <span className="muted" style={{ whiteSpace: 'nowrap' }}>{vp.giveFlowers || 'Give Flowers'}</span>
+                      </button>
 
-                    <button
-                      onClick={handleLike}
-                      className={`likeBtn ${isLiked ? 'liked' : ''}`}
-                      role="button"
-                      aria-pressed={isLiked}
-                      tabIndex={0}
-                    >
-                      <HeartIcon filled={isLiked} />
-                      <b><span className="count">{likes.toLocaleString()}</span></b>
-                      <span className="muted">{isLiked ? (vp.likedBtn || 'Liked') : (vp.like || 'Like')}</span>
-                    </button>
+                      <button
+                        onClick={handleLike}
+                        className={`likeBtn ${isLiked ? 'liked' : ''}`}
+                        role="button"
+                        aria-pressed={isLiked}
+                        tabIndex={0}
+                      >
+                        <HeartIcon filled={isLiked} />
+                        <b><span className="count">{likes.toLocaleString()}</span></b>
+                        <span className="muted" style={{ whiteSpace: 'nowrap' }}>{isLiked ? (vp.likedBtn || 'Liked') : (vp.like || 'Like')}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <p className="muted" style={{ margin: '10px 0 0' }}>
@@ -1001,6 +1052,76 @@ function VideoPlayer() {
         url={window.location.href}
         title={video?.title || ''}
       />
+
+      {/* Flower Modal */}
+      {showFlowerModal && (
+        <div className="modal-overlay" onClick={() => setShowFlowerModal(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', zIndex: 9999,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{
+            background: '#1a1a1a', padding: '24px', borderRadius: '12px',
+            width: '90%', maxWidth: '360px', color: '#fff',
+            display: 'flex', flexDirection: 'column', gap: '16px',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <h3 style={{ margin: 0, fontSize: '18px' }}>{vp.giveFlowers || 'Give Flowers'}</h3>
+            <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
+              {vp.supportCreator || 'Support the creator by giving flowers. Each flower costs 10 WAi coins.'}
+            </p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px', margin: '10px 0' }}>
+              <button 
+                onClick={() => setFlowersToGive(Math.max(1, flowersToGive - 1))}
+                style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+              >-</button>
+              <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{flowersToGive} 🌸</span>
+              <button 
+                onClick={() => setFlowersToGive(flowersToGive + 1)}
+                style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+              >+</button>
+            </div>
+            
+            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+              <span>{vp.totalCost || 'Total Cost:'}</span>
+              <b style={{ whiteSpace: 'nowrap' }}>{flowersToGive * 10} WAi Coins</b>
+            </div>
+            
+            <div style={{ padding: '0 12px 12px', display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+              <span>{vp.yourBalance || 'Your Balance:'}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{user?.waiCoins || 0} WAi Coins</span>
+            </div>
+
+            {(flowersToGive * 10) > (user?.waiCoins || 0) && (
+              <div style={{ 
+                padding: '12px', 
+                background: 'rgba(255, 77, 109, 0.1)', 
+                border: '1px solid rgba(255, 77, 109, 0.3)', 
+                borderRadius: '8px', 
+                color: '#FF4D6D', 
+                fontSize: '13px', 
+                textAlign: 'center',
+                fontWeight: 'bold'
+              }}>
+                {vp.insufficientCoinsAlert || '⚠️ Insufficient WAi Coins. Please top up your balance.'}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              <button 
+                onClick={() => setShowFlowerModal(false)}
+                style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >{vp.cancel || 'Cancel'}</button>
+              <button 
+                onClick={handleGiveFlowersSubmit}
+                disabled={(flowersToGive * 10) > (user?.waiCoins || 0)}
+                style={{ flex: 1, padding: '10px', background: ((flowersToGive * 10) > (user?.waiCoins || 0)) ? 'rgba(255,255,255,0.1)' : '#FF4D6D', border: 'none', color: ((flowersToGive * 10) > (user?.waiCoins || 0)) ? 'rgba(255,255,255,0.3)' : '#fff', borderRadius: '8px', cursor: ((flowersToGive * 10) > (user?.waiCoins || 0)) ? 'not-allowed' : 'pointer', fontWeight: 'bold', whiteSpace: 'nowrap' }}
+              >{vp.confirm || 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       <div className={`toast ${toast.show ? 'show' : ''}`}>
