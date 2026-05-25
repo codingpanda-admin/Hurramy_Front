@@ -327,6 +327,8 @@ function Home() {
     return count;
   };
 
+  const getFlowerCount = (video) => video?.flowers ?? video?.flowerCount ?? video?.Flowers?.length ?? 0;
+
   const getCreatorName = (video) => {
     return video.User?.email?.split('@')[0] || 'creator';
   };
@@ -604,6 +606,14 @@ function Home() {
                           </svg>
                           <span>{formatCount(video.Likes?.length || 0)}</span>
                         </button>
+                        <span
+                          className="home-card-action-btn"
+                          title={t.campaignDetail?.flowers || 'flowers'}
+                          style={{ cursor: 'default' }}
+                        >
+                          <span aria-hidden="true">🌸</span>
+                          <span>{formatCount(getFlowerCount(video))}</span>
+                        </span>
                         <button
                           className="home-card-action-btn"
                           onClick={(e) => handleShare(e, video)}

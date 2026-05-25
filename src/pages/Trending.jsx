@@ -82,6 +82,8 @@ function Trending() {
     return n;
   };
 
+  const getFlowerCount = (video) => video?.flowers ?? video?.flowerCount ?? video?.Flowers?.length ?? 0;
+
   const getVideoThumbnail = (video) => {
     return getThumbnailUrl(video.thumbnailUrl);
   };
@@ -196,6 +198,14 @@ function Trending() {
                             </svg>
                             <span>{formatCount(video.Likes?.length || video.likeCount || 0)}</span>
                           </button>
+                          <span
+                            className="home-card-action-btn"
+                            title={t.campaignDetail?.flowers || 'flowers'}
+                            style={{ cursor: 'default' }}
+                          >
+                            <span aria-hidden="true">🌸</span>
+                            <span>{formatCount(getFlowerCount(video))}</span>
+                          </span>
                           <button
                             className="home-card-action-btn"
                             onClick={(e) => handleShare(e, video)}

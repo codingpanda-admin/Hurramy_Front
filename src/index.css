@@ -2987,7 +2987,7 @@ body:has(.major_announcement) .app-layout {
 
 .campaign-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 5fr) minmax(280px, 3fr);
   gap: 14px;
   align-items: start;
   margin-top: 14px;
