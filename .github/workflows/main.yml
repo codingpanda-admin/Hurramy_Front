@@ -8,24 +8,22 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      # 1. COPIAR LOS CAMBIOS A LA EC2
+      # Esto transfiere tu código actualizado desde GitHub hacia la carpeta /hurammy en tu servidor
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.7
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          host: 18.219.229.98
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "."
+          target: "/hurammy"
 
-      # 1. GitHub compila la imagen de Docker para que tu EC2 no sufra por falta de RAM
-      - name: Build Docker Image
-        run: |
-          docker build -t hurammy-frontend:latest .
-
-      # 2. Nos conectamos por SSH a la EC2 usando tu llave .pem para actualizar el contenedor
+      # 2. COMPILAR Y LEVANTAR EN LA EC2
       - name: SSH and Update Container
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -34,10 +32,13 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /hurammy
-            # Detener y eliminar el contenedor viejo del frontend
+            
+            # Detener y eliminar el contenedor viejo para evitar conflictos de nombre
             sudo docker stop shortvideo-frontend || true
             sudo docker rm shortvideo-frontend || true
             
-            # Re-construir localmente o levantar con compose si usas docker-compose
-            # Si usas docker run directo:
+            # Compilar la imagen usando los archivos nuevos que acabamos de copiar
+            sudo docker build -t hurammy-frontend:latest .
+            
+            # Levantar el contenedor en los puertos correspondientes
             sudo docker run -d --name shortvideo-frontend -p 80:80 -p 443:443 --restart always hurammy-frontend:latest
