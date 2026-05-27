@@ -226,6 +226,16 @@ function RightPanel({ videos = [], currentVideoIndex = 0 }) {
         )}
       </div>
 
+      <div className="panel rp-section rp-ecosystem-block">
+        <img className="rp-ecosystem-logo" src="/scenexai_logo.png" alt="SceneX AI Group" />
+        <p className="rp-ecosystem-copy">
+          HURAMMY is part of the SceneX AI Immersive & Interactive Entertainment Ecosystem.{' '}
+          <a href="https://scene-x.ai" target="_blank" rel="noreferrer">
+            Learn more -&gt;
+          </a>
+        </p>
+      </div>
+
       {/* Footer */}
       <div className="rp-footer">
         &copy; 2026  HURRAMY.COM

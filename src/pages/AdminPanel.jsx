@@ -4,9 +4,14 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import { translations } from '../utils/translations';
 
 function AdminPanel() {
   const navigate = useNavigate();
+  const lang = localStorage.getItem('appLanguage') || 'en';
+  const t = translations[lang] || translations.en;
+  const ap = t.adminPanel || {};
+  const locale = lang === 'es' ? 'es-ES' : lang === 'zh' ? 'zh-CN' : 'en-US';
   const [currentUser, setCurrentUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('users');
@@ -53,10 +58,10 @@ function AdminPanel() {
       });
       setSearchResults(res.data);
       if (res.data.length === 0) {
-        setMessage('No se encontraron usuarios con ese correo.');
+        setMessage(ap.noUsersFound || 'No users found with that email.');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Error buscando usuarios');
+      setError(ap.searchError || err.response?.data?.message || 'Error searching users');
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ function AdminPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setMessage(res.data.message);
+      setMessage(ap.roleUpdated || 'User role updated.');
       
       // Actualizamos la tabla visualmente
       setSearchResults(searchResults.map(u => 
@@ -80,7 +85,7 @@ function AdminPanel() {
       // Limpiar mensaje después de 3 segundos
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al actualizar el rol');
+      setError(ap.roleUpdateError || err.response?.data?.message || 'Error updating role');
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -89,7 +94,7 @@ function AdminPanel() {
   const handleUpdateCoins = async (userId) => {
     const newCoins = parseInt(coinInputValue, 10);
     if (isNaN(newCoins) || newCoins < 0) {
-      setError('El número de WAi Coins debe ser un número positivo');
+      setError(ap.invalidCoins || 'WAi Coins must be a positive number');
       setTimeout(() => setError(''), 3000);
       return;
     }
@@ -100,7 +105,7 @@ function AdminPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setMessage(res.data.message);
+      setMessage(ap.coinsUpdated || 'WAi Coins updated.');
       
       // Actualizamos la tabla visualmente
       setSearchResults(searchResults.map(u => 
@@ -111,7 +116,7 @@ function AdminPanel() {
       setCoinInputValue('');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al actualizar WAi Coins');
+      setError(ap.coinsUpdateError || err.response?.data?.message || 'Error updating WAi Coins');
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -124,7 +129,10 @@ function AdminPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setMessage(res.data.message);
+      setMessage(res.data.user?.coinsFrozen
+        ? (ap.coinsFrozenSuccess || 'WAi Coins frozen.')
+        : (ap.coinsUnfrozenSuccess || 'WAi Coins unfrozen.')
+      );
       
       // Actualizamos la tabla visualmente
       setSearchResults(searchResults.map(u => 
@@ -133,7 +141,7 @@ function AdminPanel() {
       
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al cambiar estado de congelación');
+      setError(ap.freezeUpdateError || err.response?.data?.message || 'Error changing freeze status');
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -179,20 +187,23 @@ function AdminPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setMessage(`Campaña ${newStatus === 'Active' ? 'activada' : 'desactivada'} correctamente.`);
+      setMessage(newStatus === 'Active'
+        ? (ap.campaignActivated || 'Campaign activated.')
+        : (ap.campaignDeactivated || 'Campaign deactivated.')
+      );
       setCampaigns(campaigns.map(c => 
         c.id === campaignId ? { ...c, status: newStatus } : c
       ));
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al cambiar estado de la campaña');
+      setError(ap.campaignStatusError || err.response?.data?.message || 'Error changing campaign status');
       setTimeout(() => setError(''), 3000);
     }
   };
 
   // 8. Eliminar campaña
   const handleDeleteCampaign = async (campaignId) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta campaña/anuncio?')) return;
+    if (!window.confirm(ap.deleteConfirm || 'Are you sure you want to delete this campaign/announcement?')) return;
     
     try {
       const token = localStorage.getItem('token');
@@ -200,11 +211,11 @@ function AdminPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setMessage('Campaña eliminada correctamente.');
+      setMessage(ap.campaignDeleted || 'Campaign deleted.');
       setCampaigns(campaigns.filter(c => c.id !== campaignId));
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al eliminar la campaña');
+      setError(ap.deleteCampaignError || err.response?.data?.message || 'Error deleting campaign');
       setTimeout(() => setError(''), 3000);
     }
   };
@@ -224,8 +235,8 @@ function AdminPanel() {
           <div className="panel" style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--line)', paddingBottom: '16px' }}>
-              <h1 style={{ fontWeight: 800, margin: 0 }}>🛡️ Centro de Mando Admin</h1>
-              <span className="muted" style={{ fontSize: '14px' }}>Logueado como: {currentUser.email}</span>
+              <h1 style={{ fontWeight: 800, margin: 0 }}>🛡️ {ap.title || 'Admin Command Center'}</h1>
+              <span className="muted" style={{ fontSize: '14px' }}>{ap.loggedInAs || 'Logged in as'}: {currentUser.email}</span>
             </div>
 
             {/* Pestañas de Navegación */}
@@ -239,7 +250,7 @@ function AdminPanel() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                Usuarios y Creditos
+                {ap.usersTab || 'Users and Credits'}
               </button>
               <button 
                 className={`btn ${activeTab === 'announcements' ? 'primary' : ''}`} 
@@ -253,7 +264,7 @@ function AdminPanel() {
                   <path d="M15 20l4-4 4 4"/>
                   <path d="M19 20V4"/>
                 </svg>
-                Anuncios y Campanas
+                {ap.announcementsTab || 'Announcements and Campaigns'}
               </button>
             </div>
 
@@ -269,14 +280,14 @@ function AdminPanel() {
                   <input 
                     type="text" 
                     className="input" 
-                    placeholder="Busca el correo de un usuario (ej: juan@gmail.com)" 
+                    placeholder={ap.searchPlaceholder || 'Search a user email (e.g. jane@gmail.com)'} 
                     value={searchEmail}
                     onChange={(e) => setSearchEmail(e.target.value)}
                     style={{ flex: 1 }}
                     required
                   />
                   <button type="submit" className="btn primary" disabled={loading}>
-                    {loading ? 'Buscando...' : 'Buscar Usuario'}
+                    {loading ? (ap.searching || 'Searching...') : (ap.searchUser || 'Search User')}
                   </button>
                 </form>
 
@@ -286,11 +297,11 @@ function AdminPanel() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
                   <thead style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--line)' }}>
                     <tr>
-                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>USUARIO</th>
-                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>ESTADO</th>
-                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>ROL</th>
+                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>{ap.userHeader || 'USER'}</th>
+                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>{ap.statusHeader || 'STATUS'}</th>
+                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>{ap.roleHeader || 'ROLE'}</th>
                       <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>WAi COINS</th>
-                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>ACCIONES</th>
+                      <th style={{ padding: '16px', fontSize: '13px', color: 'var(--muted)' }}>{ap.actionsHeader || 'ACTIONS'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -299,7 +310,7 @@ function AdminPanel() {
                         <td style={{ padding: '16px', fontSize: '14px', fontWeight: 600 }}>{u.email}</td>
                         <td style={{ padding: '16px' }}>
                           <span style={{ color: u.status === 'Locked' ? 'var(--bad)' : 'var(--good)', fontSize: '13px' }}>
-                            {u.status}
+                            {u.status === 'Locked' ? (ap.locked || 'Locked') : (ap.activeUser || 'Active')}
                           </span>
                         </td>
                         <td style={{ padding: '16px' }}>
@@ -309,8 +320,8 @@ function AdminPanel() {
                             value={u.role}
                             onChange={(e) => handleUpdateRole(u.id, e.target.value)}
                           >
-                            <option value="user">User</option>
-                            <option value="admin">Admin</option>
+                            <option value="user">{ap.userRole || 'User'}</option>
+                            <option value="admin">{ap.adminRole || 'Admin'}</option>
                           </select>
                         </td>
                         <td style={{ padding: '16px' }}>
@@ -330,14 +341,14 @@ function AdminPanel() {
                                 style={{ padding: '6px 12px', fontSize: '12px' }}
                                 onClick={() => handleUpdateCoins(u.id)}
                               >
-                                Save
+                                {ap.save || 'Save'}
                               </button>
                               <button 
                                 className="btn" 
                                 style={{ padding: '6px 12px', fontSize: '12px' }}
                                 onClick={cancelEditingCoins}
                               >
-                                Cancel
+                                {ap.cancel || 'Cancel'}
                               </button>
                             </div>
                           ) : (
@@ -365,7 +376,7 @@ function AdminPanel() {
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                   </svg>
-                                  FROZEN
+                                  {ap.frozen || 'FROZEN'}
                                 </span>
                               )}
                               <button
@@ -373,7 +384,7 @@ function AdminPanel() {
                                 style={{ padding: '4px 8px', fontSize: '11px', marginLeft: '4px' }}
                                 onClick={() => startEditingCoins(u.id, u.waiCoins)}
                               >
-                                Edit
+                                {ap.edit || 'Edit'}
                               </button>
                             </div>
                           )}
@@ -390,7 +401,7 @@ function AdminPanel() {
                             }}
                             onClick={() => handleToggleFreeze(u.id)}
                           >
-                            {u.coinsFrozen ? 'Unfreeze Coins' : 'Freeze Coins'}
+                            {u.coinsFrozen ? (ap.unfreezeCoins || 'Unfreeze Coins') : (ap.freezeCoins || 'Freeze Coins')}
                           </button>
                         </td>
                       </tr>
@@ -407,24 +418,24 @@ function AdminPanel() {
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <p className="muted" style={{ margin: 0, fontSize: '14px' }}>
-                    Gestiona los anuncios y campanas que se muestran a los usuarios.
+                    {ap.announcementsDescription || 'Manage the announcements and campaigns shown to users.'}
                   </p>
                   <Link to="/create-campaign" className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="12" y1="5" x2="12" y2="19"/>
                       <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
-                    Crear Nuevo Anuncio
+                    {ap.createAnnouncement || 'Create New Announcement'}
                   </Link>
                 </div>
 
                 {campaignsLoading ? (
                   <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <span className="muted">Cargando anuncios...</span>
+                    <span className="muted">{ap.loadingAnnouncements || 'Loading announcements...'}</span>
                   </div>
                 ) : campaigns.length === 0 ? (
                   <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--line)', padding: '40px', textAlign: 'center' }}>
-                    <span className="muted">No hay anuncios o campanas creadas.</span>
+                    <span className="muted">{ap.noAnnouncements || 'No announcements or campaigns created.'}</span>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -452,16 +463,16 @@ function AdminPanel() {
                               color: campaign.status === 'Active' ? 'var(--good)' : 'var(--bad)',
                               border: campaign.status === 'Active' ? '1px solid rgba(70, 230, 165, 0.3)' : '1px solid rgba(255, 77, 109, 0.3)'
                             }}>
-                              {campaign.status === 'Active' ? 'Activo' : 'Inactivo'}
+                              {campaign.status === 'Active' ? (ap.active || 'Active') : (ap.inactive || 'Inactive')}
                             </span>
                           </div>
                           <p style={{ margin: 0, fontSize: '13px', color: 'var(--muted)', lineHeight: 1.5 }}>
                             {campaign.description?.substring(0, 100)}{campaign.description?.length > 100 ? '...' : ''}
                           </p>
                           <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--muted)' }}>
-                            <span>Inicio: {new Date(campaign.startDate).toLocaleDateString()}</span>
+                            <span>{ap.start || 'Start'}: {new Date(campaign.startDate).toLocaleDateString(locale)}</span>
                             <span style={{ margin: '0 8px' }}>|</span>
-                            <span>Fin: {new Date(campaign.endDate).toLocaleDateString()}</span>
+                            <span>{ap.end || 'End'}: {new Date(campaign.endDate).toLocaleDateString(locale)}</span>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -476,10 +487,10 @@ function AdminPanel() {
                             }}
                             onClick={() => handleToggleCampaignStatus(campaign.id, campaign.status)}
                           >
-                            {campaign.status === 'Active' ? 'Desactivar' : 'Activar'}
+                            {campaign.status === 'Active' ? (ap.deactivate || 'Deactivate') : (ap.activate || 'Activate')}
                           </button>
-                          <Link to={`/campaign/${campaign.id}`} className="btn" style={{ padding: '8px 14px', fontSize: '12px' }}>
-                            Ver Detalles
+                          <Link to={`/create-campaign?edit=${campaign.id}`} className="btn" style={{ padding: '8px 14px', fontSize: '12px' }}>
+                            {ap.editCampaign || 'Edit Campaign'}
                           </Link>
                           <button
                             className="btn"
@@ -492,7 +503,7 @@ function AdminPanel() {
                             }}
                             onClick={() => handleDeleteCampaign(campaign.id)}
                           >
-                            Eliminar
+                            {ap.delete || 'Delete'}
                           </button>
                         </div>
                       </div>

@@ -158,7 +158,7 @@ function Sidebar({ isOpen, onClose }) {
         {user && user.role === 'admin' && (
           <Link to="/admin" style={navItemStyle(isActive('/admin'))} onClick={onClose}>
             <ShieldIcon />
-            <span style={{ color: 'var(--brand2)' }}>Panel Admin</span>
+            <span style={{ color: 'var(--brand2)' }}>{t.header?.adminPanel || t.adminPanel?.title || 'Admin Panel'}</span>
           </Link>
         )}
       </nav>
