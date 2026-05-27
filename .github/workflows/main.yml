@@ -12,8 +12,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. COPIAR LOS CAMBIOS A LA EC2
-      # Esto transfiere tu código actualizado desde GitHub hacia la carpeta /hurammy en tu servidor
+      # 1. COPIAR LOS ARCHIVOS NUEVOS A LA EC2
+      # Envía tu código limpio desde GitHub a la carpeta del servidor
       - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -23,7 +23,7 @@ jobs:
           source: "."
           target: "/hurammy"
 
-      # 2. COMPILAR Y LEVANTAR EN LA EC2
+      # 2. CONECTARSE POR SSH, COMPILAR Y ACTUALIZAR DOCKER
       - name: SSH and Update Container
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -33,12 +33,12 @@ jobs:
           script: |
             cd /hurammy
             
-            # Detener y eliminar el contenedor viejo para evitar conflictos de nombre
+            # Detener y eliminar el contenedor viejo para liberar el puerto 8080
             sudo docker stop shortvideo-frontend || true
             sudo docker rm shortvideo-frontend || true
             
-            # Compilar la imagen usando los archivos nuevos que acabamos de copiar
+            # Compilar la nueva imagen usando los archivos recién copiados
             sudo docker build -t hurammy-frontend:latest .
             
-            # Levantar el contenedor en los puertos correspondientes
-            sudo docker run -d --name shortvideo-frontend -p 80:80 -p 443:443 --restart always hurammy-frontend:latest
+            # Levantar el frontend en el puerto 8080 (el puerto exacto que busca tu Nginx)
+            sudo docker run -d --name shortvideo-frontend -p 8080:80 --restart always hurammy-frontend:latest
