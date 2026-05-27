@@ -8,9 +8,10 @@ import Header from '../components/Header';
 import ShareModal from '../components/ShareModal';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
-import { getVideoUrl, getThumbnailUrl } from '../utils/mediaUtils';
+import { getVideoUrl, getThumbnailUrl, getMediaUrl } from '../utils/mediaUtils';
 
 const ROTATE_MS = 6000;
+const BANNER_ROTATE_MS = 5000; // Banner carousel rotation time
 const ENDING_SOON_DAYS = 3; // campaigns ending within 3 days get special color
 
 function Home() {
@@ -44,6 +45,12 @@ function Home() {
   const timerRef = useRef(null);
   const progressRef = useRef(null);
 
+  // Banner carousel state
+  const [bannerCampaigns, setBannerCampaigns] = useState([]);
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const bannerTimerRef = useRef(null);
+  const bannerDragRef = useRef({ startX: 0, isDragging: false });
+
   const user = JSON.parse(localStorage.getItem('user'));
   const lang = localStorage.getItem('appLanguage') || 'en';
   const t = translations[lang] || translations.en;
@@ -61,6 +68,11 @@ function Home() {
 
   useEffect(() => {
     loadVideos();
+  }, []);
+
+  // Load campaigns for banner carousel and announcements
+  useEffect(() => {
+    loadCampaignAnnouncements();
   }, []);
 
   useEffect(() => {
@@ -141,10 +153,15 @@ function Home() {
         const endingFirst = campaignItems.filter(c => c.type === 'ending');
         const rest = campaignItems.filter(c => c.type !== 'ending');
         setAllAnnouncements([...endingFirst, ...rest, ...systemItems]);
+
+        // Set banner campaigns (only campaigns with banners)
+        const campaignsWithBanners = active.filter(c => c.bannerUrl);
+        setBannerCampaigns(campaignsWithBanners);
       })
       .catch(() => {
         // If campaigns fail, still show system announcements
         setAllAnnouncements(systemItems);
+        setBannerCampaigns([]);
       });
   };
 
@@ -171,6 +188,64 @@ function Home() {
     }, ROTATE_MS);
     return () => clearInterval(timerRef.current);
   }, [announceOpen, startProgress, totalAnn]);
+
+  // Banner carousel auto-rotation (5 seconds)
+  const totalBannerSlides = bannerCampaigns.length + 1; // +1 for main banner
+  useEffect(() => {
+    if (totalBannerSlides <= 1) return;
+    bannerTimerRef.current = setInterval(() => {
+      setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+    }, BANNER_ROTATE_MS);
+    return () => clearInterval(bannerTimerRef.current);
+  }, [totalBannerSlides, bannerIdx]);
+
+  const nextBanner = () => {
+    setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+  };
+
+  const prevBanner = () => {
+    setBannerIdx(prev => (prev - 1 + totalBannerSlides) % totalBannerSlides);
+  };
+
+  // Mouse drag handlers for banner carousel
+  const handleBannerMouseDown = (e) => {
+    bannerDragRef.current.startX = e.clientX;
+    bannerDragRef.current.isDragging = true;
+    clearInterval(bannerTimerRef.current);
+  };
+
+  const handleBannerMouseUp = (e) => {
+    if (!bannerDragRef.current.isDragging) return;
+    const diff = e.clientX - bannerDragRef.current.startX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        prevBanner();
+      } else {
+        nextBanner();
+      }
+    } else {
+      // Restart timer if no slide change
+      bannerTimerRef.current = setInterval(() => {
+        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+      }, BANNER_ROTATE_MS);
+    }
+    bannerDragRef.current.isDragging = false;
+  };
+
+  const handleBannerMouseLeave = () => {
+    if (bannerDragRef.current.isDragging) {
+      bannerDragRef.current.isDragging = false;
+      bannerTimerRef.current = setInterval(() => {
+        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+      }, BANNER_ROTATE_MS);
+    }
+  };
+
+  // Helper to get campaign banner URL - uses centralized mediaUtils
+  const getCampaignBannerUrl = (url) => {
+    if (!url) return null;
+    return getMediaUrl(url);
+  };
 
   const setAnn = (i) => {
     if (totalAnn === 0) return;
@@ -348,6 +423,7 @@ function Home() {
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         videos={videos}
         initialQuery={searchQuery}
+        onOpenInstructions={() => setInstructionsOpen(true)}
       />
 
       {/* Mobile sidebar overlay */}
@@ -358,21 +434,74 @@ function Home() {
         />
       )}
 
-      <section className="major_announcement" aria-label="Major announcement">
-        <button
-          type="button"
-          className="major_announcement_btn"
-          onClick={() => setInstructionsOpen(true)}
-        >
-          Instructions
-        </button>
-      </section>
-
       <div className="app-layout">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         {/* Main Content - Grid */}
         <main className="home-main-pane" style={{ padding: '18px', overflowY: 'auto' }}>
+          {/* Banner Carousel - hidden on mobile */}
+          <section 
+            className="major_announcement banner-carousel" 
+            aria-label="Banner carousel"
+            onMouseDown={handleBannerMouseDown}
+            onMouseUp={handleBannerMouseUp}
+            onMouseLeave={handleBannerMouseLeave}
+            style={{ cursor: totalBannerSlides > 1 ? 'grab' : 'default' }}
+          >
+            {/* Slides */}
+            <div className="banner-carousel-slides">
+              {/* Main Banner (index 0) */}
+              <div className={`banner-carousel-slide${bannerIdx === 0 ? ' active' : ''}`}>
+                {/* Default banner background from CSS */}
+              </div>
+
+              {/* Campaign Banners */}
+              {bannerCampaigns.map((campaign, idx) => {
+                const bannerUrl = getCampaignBannerUrl(campaign.bannerUrl);
+                return (
+                <div 
+                  key={campaign.id}
+                  className={`banner-carousel-slide banner-carousel-campaign${bannerIdx === idx + 1 ? ' active' : ''}`}
+                  style={{ backgroundImage: bannerUrl ? `url("${encodeURI(bannerUrl)}")` : 'none' }}
+                >
+                  <div className="banner-carousel-campaign-content">
+                    <h2 className="banner-carousel-campaign-title">{campaign.name}</h2>
+                    {campaign.description && (
+                      <p className="banner-carousel-campaign-desc">{campaign.description}</p>
+                    )}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      marginBottom: '16px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      color: '#19D3FF',
+                      textShadow: '0 2px 4px rgba(0,0,0,0.8)',
+                      background: 'rgba(0, 0, 0, 0.4)',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      width: 'fit-content',
+                      margin: '0 auto 16px auto',
+                      border: '1px solid rgba(25, 211, 255, 0.25)'
+                    }}>
+                      <span>📅 {formatDate(campaign.startDate)}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.4)' }}>—</span>
+                      <span>{formatDate(campaign.endDate)}</span>
+                    </div>
+                    <Link to={`/campaign/${campaign.id}`} className="banner-carousel-campaign-btn">
+                      {t.home?.viewCampaign || 'View Campaign'}
+                    </Link>
+                  </div>
+                </div>
+                );
+              })}
+            </div>
+
+          </section>
           {/* Toggle row: Explore Videos + re-open announcements if closed */}
           <div className="home-toggle-row">
             {!announceOpen && totalAnn > 0 && (
@@ -558,18 +687,25 @@ function Home() {
                         loading="lazy"
                       />
                     ) : (
-                      <video
-                        src={`${getVideoSrc(video)}#t=1`}
-                        preload="metadata"
-                        muted
-                        playsInline
-                        crossOrigin="anonymous"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onLoadedData={(e) => {
-                          // Capture frame at 1 second and pause
-                          e.target.currentTime = 1;
-                        }}
-                      />
+                      <div className="home-card-video-fallback">
+                        <video
+                          src={`${getVideoSrc(video)}#t=1`}
+                          preload="metadata"
+                          muted
+                          playsInline
+                          crossOrigin="anonymous"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            // Hide video on error
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        <div className="home-card-video-icon">
+                          <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--muted)" stroke="none">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                          </svg>
+                        </div>
+                      </div>
                     )}
                     <div className="home-card-play">
                       <div style={{
@@ -716,7 +852,7 @@ function Home() {
               <p><strong>演唱类别：</strong>美声歌曲（包括中国艺术歌曲及古诗词艺术歌曲）、流行及通俗歌曲、音乐剧选段等。</p>
 
               <h4>三、比赛项目</h4>
-              <p><strong>“唱响华府”卡拉 OK 挑战赛：</strong>演唱语言不限，曲目内容健康向上。允许独唱、对唱及组合形式，并可定期开放现场 PK 形式。月赛视频时长控制在 1 分钟以内，季赛及年度赛视频时长控制在 3 分钟以内。专业评委老师 3 - 5 位。</p>
+              <p><strong>“唱响��府��卡拉 OK 挑战赛：</strong>演唱语言不限，曲目内容健康向上。允许独唱、对唱及组合形式，并可定期开放现场 PK 形式。月赛视频时长控制在 1 分钟以内，季赛及年度赛视频时长控制在 3 分钟以内。专业评委老师 3 - 5 位。</p>
               <p><strong>“影动视界”短剧创意大奖赛：</strong>参赛类别包括原创短剧、动漫短剧、真人短剧。作品时长 1 - 5 分钟，内容积极健康，鼓励原创作品。专业评委老师 3 - 5 位。</p>
 
               <h4>四、赛事流程</h4>
@@ -737,12 +873,12 @@ function Home() {
               <h4>七、知识产权与授权</h4>
               <ul>
                 <li>参赛者保证拥有作品合法版权。</li>
-                <li>作品不得侵犯第三方知识产权。</li>
+                <li>作品不得侵犯第三方知识��权。</li>
                 <li>参赛作品授权组委会用于赛事宣传、展播及推广。</li>
                 <li>作者保留作品署名权。</li>
               </ul>
 
-              <h4>八、违规处理</h4>
+              <h4>八、���规处理</h4>
               <p>出现以下情况之一，组委会有权取消参赛资格：抄袭、剽窃作品；虚假报名资料；刷票、恶意操纵数据；发布违法或不当内容；影响赛事公平公正的行为。</p>
 
               <h4>九、赛事宣传主题建议</h4>

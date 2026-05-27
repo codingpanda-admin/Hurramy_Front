@@ -4,7 +4,7 @@ import axios from 'axios';
 import Header from '../components/Header';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
-import { getVideoUrl, getThumbnailUrl } from '../utils/mediaUtils';
+import { getVideoUrl, getThumbnailUrl, getMediaUrl } from '../utils/mediaUtils';
 import JoinVideoSidebar from '../components/JoinVideoSidebar';
 
 function CampaignDetail() {
@@ -13,7 +13,7 @@ function CampaignDetail() {
   const [myVideos, setMyVideos] = useState([]);
   const [selectedVideoId, setSelectedVideoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('likes_desc');
+  const [sortBy, setSortBy] = useState('points_desc');
   const [toast, setToast] = useState({ show: false, message: '' });
   const [previewVideo, setPreviewVideo] = useState(null);
   const [commentText, setCommentText] = useState('');
@@ -25,6 +25,11 @@ function CampaignDetail() {
   const [lastUpdated, setLastUpdated] = useState('');
   const shouldAutoplayPreview = useRef(false);
   const previewVideoRef = useRef(null);
+  const lastCountedVideoId = useRef(null);
+  const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+  const [showJudgesPanel, setShowJudgesPanel] = useState(false);
+  const [showOrganizerPanel, setShowOrganizerPanel] = useState(false);
+  const [teamModalRole, setTeamModalRole] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user'));
   const lang = localStorage.getItem('appLanguage') || 'en';
@@ -275,6 +280,12 @@ function CampaignDetail() {
     }
 
     switch (sortBy) {
+      case 'points_desc':
+        videos.sort((a, b) => getPointCount(b) - getPointCount(a));
+        break;
+      case 'points_asc':
+        videos.sort((a, b) => getPointCount(a) - getPointCount(b));
+        break;
       case 'likes_desc':
         videos.sort((a, b) => (b.Likes?.length || 0) - (a.Likes?.length || 0));
         break;
@@ -294,13 +305,17 @@ function CampaignDetail() {
     return videos;
   };
 
-  const totalLikes = campaign?.Videos?.reduce((sum, v) => sum + (v.Likes?.length || 0), 0) || 0;
-  const filteredVideos = getFilteredVideos();
-  const deadline = getDeadlineInfo(campaign?.endDate);
-  const isCampaignActive = (campaign?.status ? campaign.status === 'Active' : true) && !deadline.ended;
   const getLikeCount = (video) => video?.likeCount ?? video?.Likes?.length ?? 0;
   const getFlowerCount = (video) => video?.flowers ?? video?.flowerCount ?? video?.Flowers?.length ?? 0;
   const getPointCount = (video) => (getFlowerCount(video) * 100) + getLikeCount(video);
+
+  const totalLikes = campaign?.Videos?.reduce((sum, v) => sum + (v.Likes?.length || 0), 0) || 0;
+  const filteredVideos = getFilteredVideos();
+  const campaignMembers = campaign?.teamMembers || campaign?.TeamMembers || [];
+  const organizers = campaignMembers.filter(m => m.role === 'Organizer');
+  const judges = campaignMembers.filter(m => m.role === 'Judge');
+  const deadline = getDeadlineInfo(campaign?.endDate);
+  const isCampaignActive = (campaign?.status ? campaign.status === 'Active' : true) && !deadline.ended;
   const previewActionButtonStyle = {
     minHeight: '40px',
     padding: '8px 12px',
@@ -315,14 +330,24 @@ function CampaignDetail() {
     return thumbnail ? (
       <img src={thumbnail} alt={video?.title || 'Video'} loading="lazy" style={baseStyle} />
     ) : (
-      <video
-        src={`${getVideoSrc(video)}#t=1`}
-        preload="metadata"
-        muted
-        playsInline
-        crossOrigin="anonymous"
-        style={baseStyle}
-      />
+      <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}>
+        <video
+          src={`${getVideoSrc(video)}#t=1`}
+          preload="metadata"
+          muted
+          playsInline
+          crossOrigin="anonymous"
+          style={baseStyle}
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--muted)" stroke="none">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+      </div>
     );
   };
 
@@ -347,6 +372,25 @@ function CampaignDetail() {
             muted={globalMuted}
             src={getVideoSrc(previewVideo)}
             style={{ width: '100%', height: '100%', display: 'block', background: '#000' }}
+            onPlay={() => {
+              if (previewVideo && lastCountedVideoId.current !== previewVideo.id) {
+                lastCountedVideoId.current = previewVideo.id;
+                axios.post(`${API_URL}/videos/${previewVideo.id}/view`)
+                  .then(res => {
+                    if (res.data && typeof res.data.views === 'number') {
+                      setPreviewVideo(prev => prev && prev.id === previewVideo.id ? { ...prev, views: res.data.views } : prev);
+                      setCampaign(prev => {
+                        if (!prev || !prev.Videos) return prev;
+                        return {
+                          ...prev,
+                          Videos: prev.Videos.map(vid => vid.id === previewVideo.id ? { ...vid, views: res.data.views } : vid)
+                        };
+                      });
+                    }
+                  })
+                  .catch(err => console.error(err));
+              }
+            }}
           />
         </div>
         <div className="pMeta" style={{ padding: '12px 2px 16px', borderBottom: '1px solid var(--line)', marginBottom: '12px' }}>
@@ -505,7 +549,11 @@ function CampaignDetail() {
         <div>
           <div style={{ fontWeight: 900, letterSpacing: '-0.2px' }}>{cd.leaderboard || 'Leaderboard'}</div>
           <div className="muted" style={{ fontSize: '12px' }}>
-            {filteredVideos.length} {cd.videosShown || 'videos shown'} • {cd.rankedByLikes || 'ranked by likes'}
+            {filteredVideos.length} {cd.videosShown || 'videos shown'} • {
+              sortBy.startsWith('points')
+                ? (lang === 'es' ? 'clasificados por puntos' : 'ranked by points')
+                : (cd.rankedByLikes || 'ranked by likes')
+            }
           </div>
         </div>
         <span className="pill">
@@ -536,12 +584,12 @@ function CampaignDetail() {
           {filteredVideos.map((video, index) => (
               <div
                 key={video.id}
-                className="row"
+                className="row leaderboard-row"
                 onClick={() => handlePreviewSelect(video)}
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: '54px 1fr',
-                  gap: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
                   padding: '12px',
                   borderRadius: '18px',
                   border: previewVideo?.id === video.id
@@ -555,78 +603,60 @@ function CampaignDetail() {
                   transition: 'transform 0.15s ease, background 0.15s ease, border-color 0.15s ease',
                 }}
               >
-                <div className="rank" style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '16px',
-                  display: 'grid',
-                  placeItems: 'center',
-                  fontWeight: 900,
-                  background: index < 3
-                    ? 'linear-gradient(135deg, rgba(124,92,255,0.3), rgba(25,211,255,0.2))'
-                    : 'rgba(124,92,255,0.18)',
-                  border: '1px solid rgba(124,92,255,0.26)',
-                  color: 'rgba(234,240,255,0.92)',
-                  fontSize: index < 3 ? '18px' : '14px',
-                  flexShrink: 0,
-                }}>
-                  {getRankBadge(index)}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                    <div style={{
-                      width: '58px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      border: '1px solid var(--line)',
-                      overflow: 'hidden',
-                      flex: '0 0 58px',
-                      background: 'rgba(0,0,0,0.22)',
+                {/* Top row: Rank, Thumbnail, Points */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="rank" style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    fontWeight: 900,
+                    background: index < 3
+                      ? 'linear-gradient(135deg, rgba(124,92,255,0.3), rgba(25,211,255,0.2))'
+                      : 'rgba(124,92,255,0.18)',
+                    border: '1px solid rgba(124,92,255,0.26)',
+                    color: 'rgba(234,240,255,0.92)',
+                    fontSize: index < 3 ? '16px' : '13px',
+                    flexShrink: 0,
+                  }}>
+                    {getRankBadge(index)}
+                  </div>
+                  <div style={{
+                    width: '54px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--line)',
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                    background: 'rgba(0,0,0,0.22)',
+                  }}>
+                    {renderVideoThumb(video)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ 
+                      margin: 0, 
+                      fontSize: '13px', 
+                      fontWeight: 800, 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis', 
+                      whiteSpace: 'nowrap',
+                      color: 'var(--text)'
                     }}>
-                      {renderVideoThumb(video)}
-                    </div>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      minWidth: 0,
-                      flex: '1 1 auto',
-                      flexWrap: 'nowrap',
-                      fontSize: '11px',
-                      color: 'rgba(234,240,255,0.82)',
-                    }}>
-                      <span className="chip" style={{
-                        padding: '3px 6px',
-                        borderRadius: '999px',
-                        border: '1px solid var(--line)',
-                        background: 'rgba(255,255,255,0.04)',
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        ❤️ {formatNumber(getLikeCount(video))} {cd.likes || 'likes'}
-                      </span>
-                      <span className="chip" style={{
-                        padding: '3px 6px',
-                        borderRadius: '999px',
-                        border: '1px solid var(--line)',
-                        background: 'rgba(255,255,255,0.04)',
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        🌸 {formatNumber(getFlowerCount(video))} {cd.flowers || 'flowers'}
-                      </span>
-                    </div>
-                    <div style={{
-                      minWidth: '74px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      justifyContent: 'center',
-                      gap: '2px',
-                      fontVariantNumeric: 'tabular-nums',
-                      flex: '0 0 auto',
-                      marginLeft: 'auto',
-                    }}>
+                      {video.title}
+                    </p>
+                    <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                      @{video.User?.email?.split('@')[0] || 'User'}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '2px',
+                    fontVariantNumeric: 'tabular-nums',
+                    flexShrink: 0,
+                  }}>
                       <strong style={{ fontSize: '16px', lineHeight: 1, color: '#19D3FF' }}>
                         {formatNumber(getPointCount(video))}
                       </strong>
@@ -635,25 +665,45 @@ function CampaignDetail() {
                       </span>
                     </div>
                   </div>
-                  <p className="title" style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 900, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {video.title}
-                  </p>
-                  <div className="meta" style={{ marginTop: '6px', fontSize: '12px', color: 'rgba(234,240,255,0.72)', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                
+                {/* Bottom row: Stats */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '8px', 
+                  flexWrap: 'wrap',
+                  paddingLeft: '50px'
+                }}>
+                  <span className="chip" style={{
+                    padding: '4px 8px',
+                    borderRadius: '999px',
+                    border: '1px solid var(--line)',
+                    background: 'rgba(255,255,255,0.04)',
+                    fontSize: '11px',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    ❤️ {formatNumber(getLikeCount(video))}
+                  </span>
+                  <span className="chip" style={{
+                    padding: '4px 8px',
+                    borderRadius: '999px',
+                    border: '1px solid var(--line)',
+                    background: 'rgba(255,255,255,0.04)',
+                    fontSize: '11px',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    🌸 {formatNumber(getFlowerCount(video))}
+                  </span>
+                  {video.category && (
                     <span className="chip" style={{
-                      padding: '3px 8px',
+                      padding: '4px 8px',
                       borderRadius: '999px',
                       border: '1px solid var(--line)',
                       background: 'rgba(255,255,255,0.04)',
-                    }}>@{video.User?.email?.split('@')[0] || 'User'}</span>
-                    {video.category && (
-                      <span className="chip" style={{
-                        padding: '3px 8px',
-                        borderRadius: '999px',
-                        border: '1px solid var(--line)',
-                        background: 'rgba(255,255,255,0.04)',
-                      }}>{video.category}</span>
-                    )}
-                  </div>
+                      fontSize: '11px',
+                    }}>
+                      {video.category}
+                    </span>
+                  )}
                 </div>
               </div>
           ))}
@@ -687,6 +737,8 @@ function CampaignDetail() {
             justifySelf: 'start',
           }}
         >
+          <option value="points_desc">{lang === 'es' ? 'Orden: Puntos (mayor a menor)' : 'Sort: Points (high to low)'}</option>
+          <option value="points_asc">{lang === 'es' ? 'Orden: Puntos (menor a mayor)' : 'Sort: Points (low to high)'}</option>
           <option value="likes_desc">{cd.sortLikesHigh || 'Sort: Likes (high to low)'}</option>
           <option value="likes_asc">{cd.sortLikesLow || 'Sort: Likes (low to high)'}</option>
           <option value="title_asc">{cd.sortTitle || 'Sort: Title (A to Z)'}</option>
@@ -782,6 +834,70 @@ function CampaignDetail() {
             </h1>
           </div>
 
+          {/* Instructions & Judges Buttons */}
+          <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto', flexWrap: 'wrap' }}>
+            {campaign.instructionsImageUrl && (
+              <button
+                onClick={() => setShowInstructionsModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(234,240,255,0.3)',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(124,92,255,0.3)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+              >
+                {cd.instructions || 'Instructions'}
+              </button>
+            )}
+            {organizers.length > 0 && (
+              <button
+                onClick={() => setTeamModalRole('Organizer')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(234,240,255,0.3)',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(124,92,255,0.3)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+              >
+                {lang === 'es' ? 'Organizador' : lang === 'zh' ? '组织者' : 'Organizer'}
+              </button>
+            )}
+            {judges.length > 0 && (
+              <button
+                onClick={() => setTeamModalRole('Judge')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '20px',
+                  border: '1px solid rgba(234,240,255,0.3)',
+                  background: 'rgba(0,0,0,0.3)',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(124,92,255,0.3)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+              >
+                {lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judge'}
+              </button>
+            )}
+          </div>
+
           <div style={{
             flex: '0 0 auto',
             minWidth: '220px',
@@ -810,6 +926,8 @@ function CampaignDetail() {
             </div>
           </div>
         </section>
+
+        {/* Old judges panel removed - replaced by popup modals */}
 
 
         <section className="campaign-grid">
@@ -917,6 +1035,208 @@ function CampaignDetail() {
       <div className={`toast ${toast.show ? 'show' : ''}`}>
         {toast.message}
       </div>
+
+      {/* Instructions Modal */}
+      {showInstructionsModal && campaign.instructionsImageUrl && (
+        <div 
+          onClick={() => setShowInstructionsModal(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              background: 'var(--bg)',
+              border: '1px solid rgba(234,240,255,0.2)',
+            }}
+          >
+            <button
+              onClick={() => setShowInstructionsModal(false)}
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: 'rgba(0,0,0,0.6)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                zIndex: 10,
+              }}
+            >
+              &times;
+            </button>
+            <img
+              src={getMediaUrl(campaign.instructionsImageUrl)}
+              alt={`${campaign.name} Instructions`}
+              style={{
+                display: 'block',
+                maxWidth: '100%',
+                maxHeight: '85vh',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Team Members Modal */}
+      {teamModalRole && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setTeamModalRole(null)} 
+          style={{
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            background: 'rgba(0,0,0,0.75)', 
+            backdropFilter: 'blur(8px)',
+            zIndex: 9999,
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div 
+            className="modal-content" 
+            onClick={e => e.stopPropagation()} 
+            style={{
+              background: '#131520', 
+              padding: '28px', 
+              borderRadius: '24px',
+              width: '90%', 
+              maxWidth: '500px', 
+              color: '#fff',
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '20px',
+              border: '1px solid rgba(234,240,255,0.15)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              position: 'relative'
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(234,240,255,0.1)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>
+                {teamModalRole === 'Organizer' 
+                  ? (lang === 'es' ? 'Organizadores' : lang === 'zh' ? '组织者' : 'Organizers')
+                  : (lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judges')
+                }
+              </h3>
+              <button
+                onClick={() => setTeamModalRole(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(234,240,255,0.6)',
+                  cursor: 'pointer',
+                  fontSize: '28px',
+                  lineHeight: 1,
+                  padding: '4px'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* List of Members */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {campaignMembers.filter(m => m.role === teamModalRole).map((member, index) => (
+                <div 
+                  key={index} 
+                  style={{
+                    display: 'flex',
+                    gap: '16px',
+                    alignItems: 'flex-start',
+                    background: 'rgba(255,255,255,0.02)',
+                    padding: '16px',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(234,240,255,0.06)'
+                  }}
+                >
+                  <div style={{
+                    width: '90px',
+                    height: '110px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    background: 'rgba(124,92,255,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    border: '1px solid rgba(234,240,255,0.1)'
+                  }}>
+                    {member.pictureUrl ? (
+                      <img 
+                        src={getMediaUrl(member.pictureUrl)} 
+                        alt={member.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,0.4)" strokeWidth="1.5">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: '#fff' }}>
+                      {member.name}
+                    </h4>
+                    <span style={{ 
+                      fontSize: '11px', 
+                      background: 'rgba(124,92,255,0.2)', 
+                      color: '#a78bfa', 
+                      padding: '2px 8px', 
+                      borderRadius: '12px', 
+                      fontWeight: 600,
+                      display: 'inline-block',
+                      marginBottom: '8px'
+                    }}>
+                      {member.role === 'Organizer' 
+                        ? (lang === 'es' ? 'Organizador' : lang === 'zh' ? '组织者' : 'Organizer')
+                        : (lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judge')
+                      }
+                    </span>
+                    <p style={{ margin: 0, fontSize: '13px', color: 'rgba(234,240,255,0.7)', lineHeight: 1.4 }}>
+                      {member.bio || (lang === 'es' ? 'Sin biografía disponible.' : 'No biography available.')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {campaignMembers.filter(m => m.role === teamModalRole).length === 0 && (
+                <p style={{ margin: 0, textAlign: 'center', color: 'rgba(234,240,255,0.5)', fontSize: '14px', padding: '20px 0' }}>
+                  {lang === 'es' ? 'No se encontraron miembros para este rol.' : 'No members found for this role.'}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

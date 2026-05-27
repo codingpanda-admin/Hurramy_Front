@@ -5,17 +5,19 @@ import { translations } from '../utils/translations';
 import { API_URL } from '../config';
 import { getAvatarUrl } from '../utils/mediaUtils';
 
-function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
+function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onScrollChange, onOpenInstructions }) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [langOpen, setLangOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileSearchVisible, setMobileSearchVisible] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const user = JSON.parse(localStorage.getItem('user'));
   const storedLang = localStorage.getItem('appLanguage') || (user?.language) || 'en';
 
   const [currentLang, setCurrentLang] = useState(storedLang);
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
   const navigate = useNavigate();
   const location = useLocation();
   const langRef = useRef(null);
@@ -133,6 +135,19 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Fetch active campaigns for mobile menu
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/campaigns`);
+        setActiveCampaigns(res.data || []);
+      } catch (err) {
+        console.error('Error fetching campaigns:', err);
+      }
+    };
+    fetchCampaigns();
+  }, []);
+
   // Dynamic scroll show/hide for mobile search bar
   // Listens on both window and any <main> element (which may have its own overflow scroll)
   useEffect(() => {
@@ -147,9 +162,10 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
       }
 
       if (currentY > lastScrollY.current && currentY > 60) {
-        setMobileSearchVisible(false);
+        // Keep search bar always visible, only notify parent for other uses
+        if (onScrollChange) onScrollChange(false);
       } else {
-        setMobileSearchVisible(true);
+        if (onScrollChange) onScrollChange(true);
       }
       lastScrollY.current = currentY;
     };
@@ -332,6 +348,37 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
       <path d="M15 9.5c0-1.5-1.5-2.5-3-2.5s-3 1-3 2.5 1.5 2 3 2.5 3 1 3 2.5-1.5 2.5-3 2.5-3-1-3-2.5"/>
     </svg>
   );
+  const IconMenu = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  );
+  const IconClose = (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  );
+  const IconHome = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  );
+  const IconUpload = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+  );
+  const IconCampaigns = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+    </svg>
+  );
 
   const username = user?.email?.split('@')[0] || '';
 
@@ -342,6 +389,16 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
         <Link to="/" className="header-brand">
           <img src="/logo.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
         </Link>
+
+        {/* Mobile hamburger menu button */}
+        <button 
+          className="header-hamburger-btn"
+          onClick={() => setMobileMenuOpen(prev => !prev)}
+          aria-label="Toggle menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? IconClose : IconMenu}
+        </button>
 
         <nav className="header-nav" aria-label="Primary navigation">
           {navItems.map((item) => (
@@ -524,6 +581,18 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
                       </button>
                     )}
 
+                    {/* Instructions */}
+                    {onOpenInstructions && (
+                      <button className="header-user-dd-item" onClick={() => { setUserMenuOpen(false); onOpenInstructions(); }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"/>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                          <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <span>{t.header?.instructions || 'Instructions'}</span>
+                      </button>
+                    )}
+
                     <div className="header-user-dd-sep"/>
 
                     {/* WAi Coins Balance */}
@@ -566,6 +635,108 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '' }) {
         </div>
       </div>
     </header>
+
+    {/* Mobile Navigation Menu Overlay */}
+    {mobileMenuOpen && (
+      <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)} />
+    )}
+    
+    {/* Mobile Navigation Menu */}
+    <div className={`mobile-nav-menu${mobileMenuOpen ? ' open' : ''}`}>
+      <nav className="mobile-nav-links">
+        <Link 
+          to="/" 
+          className={`mobile-nav-link${location.pathname === '/' ? ' active' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          {IconHome}
+          <span>{t.sidebar?.home || 'Home'}</span>
+        </Link>
+        <Link 
+          to="/trending" 
+          className={`mobile-nav-link${location.pathname === '/trending' ? ' active' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          {IconTrending}
+          <span>{t.sidebar?.trending || 'Trending'}</span>
+        </Link>
+        <Link 
+          to="/campaigns" 
+          className={`mobile-nav-link${location.pathname === '/campaigns' ? ' active' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          {IconCampaigns}
+          <span>{t.sidebar?.campaigns || 'Campaigns'}</span>
+        </Link>
+
+        {/* Active Campaigns List */}
+        {activeCampaigns.length > 0 && (
+          <>
+            <div className="mobile-nav-separator" />
+            <div className="mobile-nav-section-title">{t.sidebar?.activeCampaigns || 'Active Campaigns'}</div>
+            {activeCampaigns.map((campaign) => (
+              <Link
+                key={campaign.id}
+                to={`/campaign/${campaign.id}`}
+                className={`mobile-nav-link mobile-nav-campaign${location.pathname === `/campaign/${campaign.id}` ? ' active' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                <span>{campaign.name}</span>
+              </Link>
+            ))}
+          </>
+        )}
+
+        <Link 
+          to="/upload" 
+          className={`mobile-nav-link${location.pathname === '/upload' ? ' active' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          {IconUpload}
+          <span>{t.sidebar?.upload || 'Upload'}</span>
+        </Link>
+        {user && (
+          <>
+            <div className="mobile-nav-separator" />
+            <Link 
+              to="/profile" 
+              className={`mobile-nav-link${location.pathname === '/profile' ? ' active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {IconProfile}
+              <span>{t.header.myProfile || 'My Profile'}</span>
+            </Link>
+            <Link 
+              to="/my-videos" 
+              className={`mobile-nav-link${location.pathname === '/my-videos' ? ' active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {IconVideo}
+              <span>{t.header.myVideos || 'My Videos'}</span>
+            </Link>
+            <Link 
+              to="/following" 
+              className={`mobile-nav-link${location.pathname === '/following' ? ' active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {IconFollowing}
+              <span>{t.sidebar?.following || 'Following'}</span>
+            </Link>
+            <Link 
+              to="/favorites" 
+              className={`mobile-nav-link${location.pathname === '/favorites' ? ' active' : ''}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {IconFavorite}
+              <span>{t.sidebar?.favorites || 'Favorites'}</span>
+            </Link>
+          </>
+        )}
+      </nav>
+    </div>
 
     {/* Mobile search bar - visible only on mobile, hides on scroll down, shows on scroll up */}
     <div className={`header-mobile-search${mobileSearchVisible ? '' : ' hidden'}`} ref={mobileSearchRef}>

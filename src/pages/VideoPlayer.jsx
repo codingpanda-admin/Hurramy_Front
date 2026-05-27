@@ -70,6 +70,7 @@ function VideoPlayer() {
   const playerRef = useRef(null);
   const fsControlsTimeout = useRef(null);
   const speedMenuRef = useRef(null);
+  const lastCountedVideoId = useRef(null);
 
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
@@ -609,7 +610,20 @@ function VideoPlayer() {
                       onTimeUpdate={() => {
                         if (videoRef.current) setCurrentTime(videoRef.current.currentTime);
                       }}
-                      onPlay={() => { setIsPlaying(true); setStatusLabel(vp.playing || 'Playing'); }}
+                      onPlay={() => {
+                        setIsPlaying(true);
+                        setStatusLabel(vp.playing || 'Playing');
+                        if (lastCountedVideoId.current !== id) {
+                          lastCountedVideoId.current = id;
+                          axios.post(`${API_URL}/videos/${id}/view`)
+                            .then(res => {
+                              if (res.data && typeof res.data.views === 'number') {
+                                setVideo(prev => prev ? { ...prev, views: res.data.views } : null);
+                              }
+                            })
+                            .catch(err => console.error(err));
+                        }
+                      }}
                       onPause={() => { setIsPlaying(false); setStatusLabel(vp.paused || 'Paused'); }}
                       onDoubleClick={handleFullscreen}
                     />
@@ -876,41 +890,45 @@ function VideoPlayer() {
                     {video.title}
                   </h1>
 
-                  <div className="metaLine" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="metaLine" style={{ 
+                    display: 'flex', 
+                    gap: '10px', 
+                    flexWrap: 'wrap', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', fontSize: '13px' }}>
                       <span className="muted">{vp.by || 'By'} <b>@{video.User?.email?.split('@')[0] || 'Creator'}</b></span>
-                      <span className="muted">|</span>
+                      <span className="muted" style={{ display: 'none' }}>|</span>
                       <span className="muted"><span className="count">{(video.views || 0).toLocaleString()}</span> {vp.views || 'views'}</span>
-                      <span className="muted">|</span>
-                      <span className="muted"><span className="count">{comments.length}</span> {vp.comments || 'comments'}</span>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button onClick={handleOpenShare} className="btn" style={{ padding: '8px 12px', fontSize: '12px' }} title={vp.shareVideo || 'Share'}>
-                        <ShareIcon /> <span style={{ whiteSpace: 'nowrap' }}>{vp.shareVideo || 'Share'}</span>
+                    <div className="video-actions-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button onClick={handleOpenShare} className="btn video-action-btn" style={{ padding: '8px 12px', fontSize: '12px' }} title={vp.shareVideo || 'Share'}>
+                        <ShareIcon /> <span className="action-label">{vp.shareVideo || 'Share'}</span>
                       </button>
 
                       <button
                         onClick={openFlowerModal}
-                        className="likeBtn"
+                        className="likeBtn video-action-btn"
                         role="button"
                         tabIndex={0}
                       >
                         <FlowerIcon />
                         <b><span className="count">{videoFlowers.toLocaleString()}</span></b>
-                        <span className="muted" style={{ whiteSpace: 'nowrap' }}>{vp.giveFlowers || 'Give Flowers'}</span>
+                        <span className="muted action-label">{vp.giveFlowers || 'Flowers'}</span>
                       </button>
 
                       <button
                         onClick={handleLike}
-                        className={`likeBtn ${isLiked ? 'liked' : ''}`}
+                        className={`likeBtn video-action-btn ${isLiked ? 'liked' : ''}`}
                         role="button"
                         aria-pressed={isLiked}
                         tabIndex={0}
                       >
                         <HeartIcon filled={isLiked} />
                         <b><span className="count">{likes.toLocaleString()}</span></b>
-                        <span className="muted" style={{ whiteSpace: 'nowrap' }}>{isLiked ? (vp.likedBtn || 'Liked') : (vp.like || 'Like')}</span>
+                        <span className="muted action-label">{isLiked ? (vp.likedBtn || 'Liked') : (vp.like || 'Like')}</span>
                       </button>
                     </div>
                   </div>
