@@ -581,7 +581,6 @@ function VideoPlayer() {
                       ref={videoRef}
                       playsInline
                       preload="auto"
-                      crossOrigin="anonymous"
                       src={getVideoUrl(video.videoUrl)}
                       poster={getThumbnailUrl(video.thumbnailUrl) || undefined}
                       style={{ width: '100%', height: '100%', display: 'block', background: '#000', cursor: 'pointer' }}

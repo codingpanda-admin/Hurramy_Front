@@ -10,6 +10,8 @@ RUN npm run build
 FROM nginx:alpine
 # Copia los archivos compilados de React a la carpeta pública de Nginx
 COPY --from=build /app/dist /usr/share/nginx/html
+# Copia la configuración de Nginx para soportar React Router y proxy a Backend/uploads
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Exponer los puertos estándar
 EXPOSE 80

@@ -37,7 +37,6 @@ const JoinVideoSidebar = ({ myVideos = [], selectedVideoId, setSelectedVideoId, 
         preload="metadata"
         muted
         playsInline
-        crossOrigin="anonymous"
         style={style}
       />
     );

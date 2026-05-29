@@ -504,7 +504,7 @@ function Home() {
           </section>
           {/* Toggle row: Explore Videos + re-open announcements if closed */}
           <div className="home-toggle-row">
-            {!announceOpen && totalAnn > 0 && (
+            {/* {!announceOpen && totalAnn > 0 && (
               <button
                 className="home-toggle-btn"
                 onClick={() => setAnnounceOpen(true)}
@@ -516,7 +516,7 @@ function Home() {
                 {sysAnn.announcements || 'Announcements'}
                 <span className="home-toggle-badge">{totalAnn}</span>
               </button>
-            )}
+            )} */}
 
           </div>
 
@@ -693,7 +693,6 @@ function Home() {
                           preload="metadata"
                           muted
                           playsInline
-                          crossOrigin="anonymous"
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           onError={(e) => {
                             // Hide video on error

@@ -336,7 +336,6 @@ function CampaignDetail() {
           preload="metadata"
           muted
           playsInline
-          crossOrigin="anonymous"
           style={baseStyle}
           onError={(e) => {
             e.target.style.display = 'none';

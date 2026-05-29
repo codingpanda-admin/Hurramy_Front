@@ -294,7 +294,6 @@ function MyVideos() {
                                   preload="metadata"
                                   muted
                                   playsInline
-                                  crossOrigin="anonymous"
                                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                                   onError={(e) => {
                                     e.target.style.display = 'none';
