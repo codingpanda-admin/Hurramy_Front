@@ -27,7 +27,7 @@ const JoinVideoSidebar = ({ myVideos = [], selectedVideoId, setSelectedVideoId, 
 
   const renderVideoThumb = (video) => {
     const thumbnail = getThumbnailUrl(video?.thumbnailUrl);
-    const style = { width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', marginBottom: '4px' };
+    const style = { width: '100%', height: '80px', objectFit: 'cover', borderRadius: '4px', marginBottom: '4px', pointerEvents: 'none' };
 
     return thumbnail ? (
       <img src={thumbnail} alt={video?.title || 'Video'} style={style} loading="lazy" />
@@ -96,7 +96,7 @@ const JoinVideoSidebar = ({ myVideos = [], selectedVideoId, setSelectedVideoId, 
                 }}
               >
                 {renderVideoThumb(v)}
-                <div style={{ fontSize: '12px', textAlign: 'center' }}>{v.title}</div>
+                <div style={{ fontSize: '12px', textAlign: 'center', pointerEvents: 'none' }}>{v.title}</div>
               </div>
             ))}
           </div>

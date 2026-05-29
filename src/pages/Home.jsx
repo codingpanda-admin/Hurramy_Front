@@ -501,6 +501,26 @@ function Home() {
               })}
             </div>
 
+            {/* Dots selectors */}
+            {totalBannerSlides > 1 && (
+              <div 
+                className="banner-carousel-dots"
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+              >
+                {Array.from({ length: totalBannerSlides }).map((_, i) => (
+                  <button
+                    key={i}
+                    className={`banner-carousel-dot${bannerIdx === i ? ' active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBannerIdx(i);
+                    }}
+                    aria-label={`Go to slide ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </section>
           {/* Toggle row: Explore Videos + re-open announcements if closed */}
           <div className="home-toggle-row">

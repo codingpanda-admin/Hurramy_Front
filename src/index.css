@@ -433,7 +433,7 @@ input[type="range"] {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease, visibility 0.5s ease;
-  background: url('/img/background_home.png') center top / 100% auto no-repeat;
+  background: url('/img/background_home0.png') center top / 100% auto no-repeat;
 }
 
 .banner-carousel-slide.active {
@@ -1695,6 +1695,55 @@ input[type="range"] {
     linear-gradient(180deg, rgba(7, 24, 74, 0.62), rgba(2, 11, 36, 0.68)),
     rgba(2, 11, 36, 0.52);
   backdrop-filter: blur(14px);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease, opacity 0.3s ease;
+}
+
+.right-panel.collapsed {
+  width: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Right Panel Toggle Button */
+.right-panel-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 280px;
+  z-index: 100;
+  width: 24px;
+  height: 60px;
+  border-radius: 12px 0 0 12px;
+  background: linear-gradient(135deg, rgba(25, 211, 255, 0.25), rgba(124, 92, 255, 0.25));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: none;
+  backdrop-filter: blur(12px);
+  color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s ease, color 0.2s ease;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.35);
+  padding: 0;
+}
+
+.right-panel-toggle.collapsed {
+  right: 0;
+}
+
+.right-panel-toggle:hover {
+  background: linear-gradient(135deg, rgba(25, 211, 255, 0.4), rgba(124, 92, 255, 0.4));
+  color: white;
+}
+
+@media (max-width: 1100px) {
+  .right-panel-toggle {
+    display: none;
+  }
 }
 
 .rp-section {
@@ -2034,10 +2083,15 @@ input[type="range"] {
   background:
     linear-gradient(90deg, rgba(2, 11, 36, 0.36), transparent 18%, transparent 82%, rgba(2, 11, 36, 0.36)),
     transparent;
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-layout:has(.right-panel) {
   grid-template-columns: minmax(0, 1fr) 280px;
+}
+
+.app-layout:has(.right-panel.collapsed) {
+  grid-template-columns: minmax(0, 1fr) 0px;
 }
 
 /* body:has(.major_announcement) .app-layout height override removed */
