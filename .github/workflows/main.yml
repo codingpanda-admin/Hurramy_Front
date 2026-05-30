@@ -20,7 +20,7 @@ jobs:
           host: 18.219.229.98
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "."
+          source: "., !.git"
           target: "/hurammy"
 
       # 2. CONECTARSE POR SSH, COMPILAR Y ACTUALIZAR DOCKER
