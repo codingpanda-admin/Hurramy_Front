@@ -29,7 +29,6 @@ function CampaignDetail() {
   const [showInstructionsModal, setShowInstructionsModal] = useState(false);
   const [showJudgesPanel, setShowJudgesPanel] = useState(false);
   const [showOrganizerPanel, setShowOrganizerPanel] = useState(false);
-  const [teamModalRole, setTeamModalRole] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('user'));
   const lang = localStorage.getItem('appLanguage') || 'en';
@@ -857,40 +856,54 @@ function CampaignDetail() {
             )}
             {organizers.length > 0 && (
               <button
-                onClick={() => setTeamModalRole('Organizer')}
+                onClick={() => {
+                  setShowOrganizerPanel(!showOrganizerPanel);
+                  setShowJudgesPanel(false);
+                }}
                 style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
-                  border: '1px solid rgba(234,240,255,0.3)',
-                  background: 'rgba(0,0,0,0.3)',
+                  border: showOrganizerPanel ? '1px solid #19D3FF' : '1px solid rgba(234,240,255,0.3)',
+                  background: showOrganizerPanel ? 'rgba(25,211,255,0.2)' : 'rgba(0,0,0,0.3)',
                   color: 'white',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: 500,
                   transition: 'all 0.2s ease',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(124,92,255,0.3)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+                onMouseOver={(e) => {
+                  if (!showOrganizerPanel) e.currentTarget.style.background = 'rgba(124,92,255,0.3)';
+                }}
+                onMouseOut={(e) => {
+                  if (!showOrganizerPanel) e.currentTarget.style.background = 'rgba(0,0,0,0.3)';
+                }}
               >
                 {lang === 'es' ? 'Organizador' : lang === 'zh' ? '组织者' : 'Organizer'}
               </button>
             )}
             {judges.length > 0 && (
               <button
-                onClick={() => setTeamModalRole('Judge')}
+                onClick={() => {
+                  setShowJudgesPanel(!showJudgesPanel);
+                  setShowOrganizerPanel(false);
+                }}
                 style={{
                   padding: '8px 16px',
                   borderRadius: '20px',
-                  border: '1px solid rgba(234,240,255,0.3)',
-                  background: 'rgba(0,0,0,0.3)',
+                  border: showJudgesPanel ? '1px solid #19D3FF' : '1px solid rgba(234,240,255,0.3)',
+                  background: showJudgesPanel ? 'rgba(25,211,255,0.2)' : 'rgba(0,0,0,0.3)',
                   color: 'white',
                   cursor: 'pointer',
                   fontSize: '14px',
                   fontWeight: 500,
                   transition: 'all 0.2s ease',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(124,92,255,0.3)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+                onMouseOver={(e) => {
+                  if (!showJudgesPanel) e.currentTarget.style.background = 'rgba(124,92,255,0.3)';
+                }}
+                onMouseOut={(e) => {
+                  if (!showJudgesPanel) e.currentTarget.style.background = 'rgba(0,0,0,0.3)';
+                }}
               >
                 {lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judge'}
               </button>
@@ -924,6 +937,103 @@ function CampaignDetail() {
               {deadline.ended ? (lang === 'zh' ? '已结束' : lang === 'es' ? 'Finalizado' : 'Ended') : (t.campaigns?.endsOn || 'Ends on')}: {deadline.date}
             </div>
           </div>
+
+          {/* Inline Organizer / Jurado Panel */}
+          {(showOrganizerPanel || showJudgesPanel) && (
+            <div style={{
+              width: '100%',
+              flexBasis: '100%',
+              borderTop: '1px solid rgba(234,240,255,0.12)',
+              marginTop: '14px',
+              paddingTop: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                  {showOrganizerPanel 
+                    ? (lang === 'es' ? 'Organizadores' : lang === 'zh' ? '组织者' : 'Organizers')
+                    : (lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judges')
+                  }
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowOrganizerPanel(false);
+                    setShowJudgesPanel(false);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'rgba(234,240,255,0.6)',
+                    cursor: 'pointer',
+                    fontSize: '20px',
+                    padding: '4px'
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {campaignMembers
+                  .filter(m => m.role === (showOrganizerPanel ? 'Organizer' : 'Judge'))
+                  .map((member, index) => (
+                    <div 
+                      key={index} 
+                      style={{
+                        display: 'flex',
+                        gap: '16px',
+                        alignItems: 'flex-start',
+                        background: 'rgba(255,255,255,0.02)',
+                        padding: '16px',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(234,240,255,0.06)'
+                      }}
+                    >
+                      <div style={{
+                        width: '70px',
+                        height: '85px',
+                        borderRadius: '10px',
+                        overflow: 'hidden',
+                        background: 'rgba(124,92,255,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        border: '1px solid rgba(234,240,255,0.1)'
+                      }}>
+                        {member.pictureUrl ? (
+                          <img 
+                            src={getMediaUrl(member.pictureUrl)} 
+                            alt={member.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,0.4)" strokeWidth="1.5">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                          </svg>
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+                          {member.name}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '13px', color: 'rgba(234,240,255,0.7)', lineHeight: 1.4 }}>
+                          {member.bio || (lang === 'es' ? 'Sin biografía disponible.' : 'No biography available.')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                {campaignMembers.filter(m => m.role === (showOrganizerPanel ? 'Organizer' : 'Judge')).length === 0 && (
+                  <p style={{ margin: 0, textAlign: 'center', color: 'rgba(234,240,255,0.5)', fontSize: '13px', padding: '10px 0' }}>
+                    {lang === 'es' ? 'No se encontraron miembros para este rol.' : 'No members found for this role.'}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Old judges panel removed - replaced by popup modals */}
@@ -1098,144 +1208,7 @@ function CampaignDetail() {
         </div>
       )}
 
-      {/* Team Members Modal */}
-      {teamModalRole && (
-        <div 
-          className="modal-overlay" 
-          onClick={() => setTeamModalRole(null)} 
-          style={{
-            position: 'fixed', 
-            top: 0, 
-            left: 0, 
-            right: 0, 
-            bottom: 0,
-            background: 'rgba(0,0,0,0.75)', 
-            backdropFilter: 'blur(8px)',
-            zIndex: 9999,
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <div 
-            className="modal-content" 
-            onClick={e => e.stopPropagation()} 
-            style={{
-              background: '#131520', 
-              padding: '28px', 
-              borderRadius: '24px',
-              width: '90%', 
-              maxWidth: '500px', 
-              color: '#fff',
-              display: 'flex', 
-              flexDirection: 'column', 
-              gap: '20px',
-              border: '1px solid rgba(234,240,255,0.15)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-              maxHeight: '85vh',
-              overflowY: 'auto',
-              position: 'relative'
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(234,240,255,0.1)', paddingBottom: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800 }}>
-                {teamModalRole === 'Organizer' 
-                  ? (lang === 'es' ? 'Organizadores' : lang === 'zh' ? '组织者' : 'Organizers')
-                  : (lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judges')
-                }
-              </h3>
-              <button
-                onClick={() => setTeamModalRole(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'rgba(234,240,255,0.6)',
-                  cursor: 'pointer',
-                  fontSize: '28px',
-                  lineHeight: 1,
-                  padding: '4px'
-                }}
-              >
-                &times;
-              </button>
-            </div>
 
-            {/* List of Members */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {campaignMembers.filter(m => m.role === teamModalRole).map((member, index) => (
-                <div 
-                  key={index} 
-                  style={{
-                    display: 'flex',
-                    gap: '16px',
-                    alignItems: 'flex-start',
-                    background: 'rgba(255,255,255,0.02)',
-                    padding: '16px',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(234,240,255,0.06)'
-                  }}
-                >
-                  <div style={{
-                    width: '90px',
-                    height: '110px',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    background: 'rgba(124,92,255,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    border: '1px solid rgba(234,240,255,0.1)'
-                  }}>
-                    {member.pictureUrl ? (
-                      <img 
-                        src={getMediaUrl(member.pictureUrl)} 
-                        alt={member.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(234,240,255,0.4)" strokeWidth="1.5">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                      </svg>
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 700, color: '#fff' }}>
-                      {member.name}
-                    </h4>
-                    <span style={{ 
-                      fontSize: '11px', 
-                      background: 'rgba(124,92,255,0.2)', 
-                      color: '#a78bfa', 
-                      padding: '2px 8px', 
-                      borderRadius: '12px', 
-                      fontWeight: 600,
-                      display: 'inline-block',
-                      marginBottom: '8px'
-                    }}>
-                      {member.role === 'Organizer' 
-                        ? (lang === 'es' ? 'Organizador' : lang === 'zh' ? '组织者' : 'Organizer')
-                        : (lang === 'es' ? 'Jurado' : lang === 'zh' ? '评委' : 'Judge')
-                      }
-                    </span>
-                    <p style={{ margin: 0, fontSize: '13px', color: 'rgba(234,240,255,0.7)', lineHeight: 1.4 }}>
-                      {member.bio || (lang === 'es' ? 'Sin biografía disponible.' : 'No biography available.')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {campaignMembers.filter(m => m.role === teamModalRole).length === 0 && (
-                <p style={{ margin: 0, textAlign: 'center', color: 'rgba(234,240,255,0.5)', fontSize: '14px', padding: '20px 0' }}>
-                  {lang === 'es' ? 'No se encontraron miembros para este rol.' : 'No members found for this role.'}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

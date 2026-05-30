@@ -24,6 +24,16 @@ function RightPanel({ videos = [], currentVideoIndex = 0 }) {
   const t = translations[lang] || translations.en;
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('rightPanelCollapsed') === 'true';
+  });
+
+  const toggleCollapse = () => {
+    const nextState = !isCollapsed;
+    setIsCollapsed(nextState);
+    localStorage.setItem('rightPanelCollapsed', String(nextState));
+  };
+
   // Fetch top creators
   const fetchCreators = useCallback(() => {
     const params = user ? `?userId=${user.id}` : '';
@@ -118,7 +128,23 @@ function RightPanel({ videos = [], currentVideoIndex = 0 }) {
   };
 
   return (
-    <aside className="right-panel" role="complementary">
+    <>
+      <button 
+        className={`right-panel-toggle${isCollapsed ? ' collapsed' : ''}`}
+        onClick={toggleCollapse}
+        aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
+      >
+        {isCollapsed ? (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        ) : (
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        )}
+      </button>
+      <aside className={`right-panel${isCollapsed ? ' collapsed' : ''}`} role="complementary">
       {/* 1. Up Next - Top 10 most viewed */}
       <div className="panel rp-section">
         <div className="rp-section-header">
@@ -242,7 +268,8 @@ function RightPanel({ videos = [], currentVideoIndex = 0 }) {
         <br/>
         <span style={{ opacity: 0.7 }}>Terms & Privacy</span>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
