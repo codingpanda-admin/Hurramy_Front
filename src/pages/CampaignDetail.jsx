@@ -1154,22 +1154,25 @@ function CampaignDetail() {
             inset: 0,
             background: 'rgba(0,0,0,0.85)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: '20px',
+            padding: '5vh 20px',
           }}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'relative',
-              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '700px',
               maxHeight: '90vh',
               borderRadius: '16px',
               overflow: 'hidden',
               background: 'var(--bg)',
               border: '1px solid rgba(234,240,255,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             <button
@@ -1190,20 +1193,22 @@ function CampaignDetail() {
                 justifyContent: 'center',
                 fontSize: '20px',
                 zIndex: 10,
+                backdropFilter: 'blur(4px)',
               }}
             >
               &times;
             </button>
-            <img
-              src={getMediaUrl(campaign.instructionsImageUrl)}
-              alt={`${campaign.name} Instructions`}
-              style={{
-                display: 'block',
-                maxWidth: '100%',
-                maxHeight: '85vh',
-                objectFit: 'contain',
-              }}
-            />
+            <div style={{ flex: 1, overflowY: 'auto', width: '100%' }}>
+              <img
+                src={getMediaUrl(campaign.instructionsImageUrl)}
+                alt={`${campaign.name} Instructions`}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: 'auto',
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
