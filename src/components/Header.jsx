@@ -387,7 +387,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     <header className="header-shell">
       <div className="header-inner">
         <Link to="/" className="header-brand">
-          <img src="/logo.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
+          <img src="/logo_hurammy.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
         </Link>
 
         {/* Mobile hamburger menu button */}

@@ -2,8 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useInView } from 'react-intersection-observer';
 import axios from 'axios';
-import Sidebar from '../components/Sidebar';
-import RightPanel from '../components/RightPanel';
 import Header from '../components/Header';
 import ShareModal from '../components/ShareModal';
 import { translations } from '../utils/translations';
@@ -28,9 +26,13 @@ function Home() {
   const [hasMore, setHasMore] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [likedVideos, setLikedVideos] = useState({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [topCreators, setTopCreators] = useState([]);
+  const [topVideos, setTopVideos] = useState([]);
+  const [loadingCreators, setLoadingCreators] = useState(true);
+  const [loadingVideos, setLoadingVideos] = useState(true);
   const [shareModal, setShareModal] = useState({ open: false, url: '', title: '' });
   const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [constructionPopupOpen, setConstructionPopupOpen] = useState(false);
   
   // Intersection observer for infinite scroll
   const { ref: loadMoreRef, inView } = useInView({
@@ -44,8 +46,11 @@ function Home() {
   const [annIdx, setAnnIdx] = useState(0);
   const timerRef = useRef(null);
   const progressRef = useRef(null);
+  const videoRailRef = useRef(null);
 
   // Banner carousel state
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
+  const [hudCampaignIdx, setHudCampaignIdx] = useState(0);
   const [bannerCampaigns, setBannerCampaigns] = useState([]);
   const [bannerIdx, setBannerIdx] = useState(0);
   const bannerTimerRef = useRef(null);
@@ -68,6 +73,8 @@ function Home() {
 
   useEffect(() => {
     loadVideos();
+    loadTopCreators();
+    loadTopVideos();
   }, []);
 
   // Load campaigns for banner carousel and announcements
@@ -156,11 +163,13 @@ function Home() {
 
         // Set banner campaigns (only campaigns with banners)
         const campaignsWithBanners = active.filter(c => c.bannerUrl);
+        setActiveCampaigns(active);
         setBannerCampaigns(campaignsWithBanners);
       })
       .catch(() => {
         // If campaigns fail, still show system announcements
         setAllAnnouncements(systemItems);
+        setActiveCampaigns([]);
         setBannerCampaigns([]);
       });
   };
@@ -188,6 +197,14 @@ function Home() {
     }, ROTATE_MS);
     return () => clearInterval(timerRef.current);
   }, [announceOpen, startProgress, totalAnn]);
+
+  useEffect(() => {
+    if (activeCampaigns.length <= 1) return;
+    const hudTimer = setInterval(() => {
+      setHudCampaignIdx(prev => (prev + 1) % activeCampaigns.length);
+    }, BANNER_ROTATE_MS);
+    return () => clearInterval(hudTimer);
+  }, [activeCampaigns.length]);
 
   // Banner carousel auto-rotation (5 seconds)
   const totalBannerSlides = bannerCampaigns.length + 1; // +1 for main banner
@@ -390,6 +407,66 @@ function Home() {
     }
   };
 
+  const loadTopCreators = () => {
+    setLoadingCreators(true);
+    const params = user ? `?userId=${user.id}` : '';
+    axios.get(`${API_URL}/users/top-creators${params}`)
+      .then(res => setTopCreators((res.data || []).slice(0, 10)))
+      .catch(() => setTopCreators([]))
+      .finally(() => setLoadingCreators(false));
+  };
+
+  const loadTopVideos = () => {
+    setLoadingVideos(true);
+    axios.get(`${API_URL}/videos/top`)
+      .then(res => setTopVideos((res.data || []).slice(0, 10)))
+      .catch(() => {
+        return axios.get(`${API_URL}/videos`)
+          .then(res => {
+            const sorted = [...(res.data || [])].sort((a, b) => {
+              const aScore = (a.views || 0) + (a.Likes?.length || a.likeCount || 0) * 3;
+              const bScore = (b.views || 0) + (b.Likes?.length || b.likeCount || 0) * 3;
+              return bScore - aScore;
+            }).slice(0, 10);
+            setTopVideos(sorted);
+          })
+          .catch(() => setTopVideos([]));
+      })
+      .finally(() => setLoadingVideos(false));
+  };
+
+  const handleToggleFollow = async (creatorId) => {
+    if (!user) {
+      showToast(t.home?.signInToFollow || 'Sign in to follow creators');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/users/toggle-follow`, {
+        followerId: user.id,
+        followingId: creatorId
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      setTopCreators(prev => prev.map(creator => (
+        creator.id === creatorId
+          ? { ...creator, isFollowing: res.data.isFollowing, followers: res.data.followers }
+          : creator
+      )));
+    } catch {
+      showToast(t.common?.error || 'Error');
+    }
+  };
+
+  const scrollVideoRail = (direction) => {
+    if (!videoRailRef.current) return;
+    const amount = videoRailRef.current.clientWidth * 0.82;
+    videoRailRef.current.scrollBy({
+      left: direction * amount,
+      behavior: 'smooth'
+    });
+  };
+
   const showToast = (message) => {
     setToast({ show: true, message });
     setTimeout(() => setToast({ show: false, message: '' }), 2000);
@@ -417,28 +494,255 @@ function Home() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="home-redesign-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header
         onSearch={handleSearch}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         videos={videos}
         initialQuery={searchQuery}
         onOpenInstructions={() => setInstructionsOpen(true)}
       />
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="sidebar-overlay"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      <div className="home-redesign-shell">
+        <main className="home-main-pane home-redesign-main">
+          <section className="home-top-image-block" aria-label="Hurammy featured visual">
+            <img src="/img/background_home0.png" alt="" aria-hidden="true" />
+            <div className="home-banner-hud" aria-live="polite">
+              {activeCampaigns.length === 0 ? (
+                <p className="home-banner-hud-empty">No active campaigns at the moment.</p>
+              ) : (() => {
+                const campaign = activeCampaigns[hudCampaignIdx % activeCampaigns.length];
+                const daysLeft = getDaysLeft(campaign.endDate);
+                return (
+                  <div className="home-banner-hud-card" key={campaign.id}>
+                    <div className="home-banner-hud-label">
+                      <span className="home-banner-hud-pulse" aria-hidden="true" />
+                      <span>Active Campaign</span>
+                    </div>
+                    <h2>{campaign.name}</h2>
+                    {campaign.description && (
+                      <p>{campaign.description}</p>
+                    )}
+                    <div className="home-banner-hud-meta">
+                      <span>{formatDate(campaign.startDate)}</span>
+                      <span>-</span>
+                      <span>{formatDate(campaign.endDate)}</span>
+                      <span>{daysLeft <= 0 ? 'Ends today' : `${daysLeft} days left`}</span>
+                    </div>
+                    <Link to={`/campaign/${campaign.id}`} className="home-banner-hud-link">
+                      View Campaign
+                    </Link>
+                    {activeCampaigns.length > 1 && (
+                      <div className="home-banner-hud-dots" aria-hidden="true">
+                        {activeCampaigns.map((item, index) => (
+                          <span key={item.id} className={index === hudCampaignIdx ? 'active' : ''} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </section>
 
-      <div className="app-layout">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <section className="home-news-rail" aria-label="News and Highlights">
+            <img src="/img/icons/icon_news.png" alt="" aria-hidden="true" />
+            <span>News and Highlights</span>
+          </section>
 
-        {/* Main Content - Grid */}
-        <main className="home-main-pane" style={{ padding: '18px', overflowY: 'auto' }}>
+          <section className="home-feature-blockers" aria-label="Hurammy categories">
+            <div className="home-feature-blocker home-feature-karaoke">
+              <div className="home-feature-karaoke-panel">
+                <button type="button" className="home-feature-live-btn">
+                  <span className="home-feature-live-indicator" aria-hidden="true" />
+                  <span>live</span>
+                </button>
+                <div className="home-feature-karaoke-copy">
+                  <strong>Voice of Washington</strong>
+                  <Link to="/campaigns" className="home-feature-karaoke-btn">Join Now</Link>
+                </div>
+              </div>
+            </div>
+            <div className="home-feature-blocker home-feature-script">
+              <div className="home-feature-info-panel">
+                <button type="button" className="home-feature-live-btn">
+                  <span className="home-feature-live-indicator" aria-hidden="true" />
+                  <span>live</span>
+                </button>
+                <div className="home-feature-script-copy">
+                  <strong>Short Drama Script Context</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Submit Now</button>
+                </div>
+              </div>
+            </div>
+            <div className="home-feature-blocker home-feature-short-drama">
+              <div className="home-feature-info-panel">
+                <button type="button" className="home-feature-live-btn">
+                  <span className="home-feature-live-indicator" aria-hidden="true" />
+                  <span>live</span>
+                </button>
+                <div className="home-feature-script-copy">
+                  <strong>Short Drama</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
+                </div>
+              </div>
+            </div>
+            <div className="home-feature-blocker home-feature-community">
+              <div className="home-feature-info-panel">
+                <button type="button" className="home-feature-live-btn">
+                  <span className="home-feature-live-indicator" aria-hidden="true" />
+                  <span>live</span>
+                </button>
+                <div className="home-feature-script-copy">
+                  <strong>Community</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
+                </div>
+              </div>
+            </div>
+            <div className="home-feature-side-panels">
+              <div className="home-feature-trending-creators">
+                <div className="rp-section-header">
+                  <span className="rp-section-title">{t.rightPanel?.trendingCreators || 'Trending Creators'}</span>
+                  <span className="rp-section-badge">{t.rightPanel?.top10 || 'Top 10'}</span>
+                </div>
+                {loadingCreators ? (
+                  <div className="rp-loading">{t.common?.loading || 'Loading...'}</div>
+                ) : topCreators.length === 0 ? (
+                  <div className="rp-empty">{t.rightPanel?.noCreators || 'No creators yet'}</div>
+                ) : (
+                  <div className="rp-creator-list">
+                    {topCreators.map((creator, i) => (
+                      <div key={creator.id} className="rp-creator-item">
+                        <div className="rp-creator-rank">{i + 1}</div>
+                        <div className="rp-creator-avatar">
+                          {creator.username?.charAt(1)?.toUpperCase() || '?'}
+                        </div>
+                        <div className="rp-creator-info">
+                          <div className="rp-creator-name" title={creator.username}>{creator.username}</div>
+                          <div className="rp-creator-stats">
+                            <span>{formatCount(creator.followers)} {t.rightPanel?.followersLabel || 'followers'}</span>
+                            <span className="rp-stat-dot" />
+                            <span>{formatCount(creator.totalViews)} {t.home?.views || 'views'}</span>
+                          </div>
+                        </div>
+                        <button
+                          className={`rp-follow-btn ${creator.isFollowing ? 'following' : ''}`}
+                          onClick={() => handleToggleFollow(creator.id)}
+                        >
+                          {creator.isFollowing
+                            ? (t.home?.following_btn || 'Following')
+                            : (t.home?.follow || 'Follow')
+                          }
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="home-feature-up-next">
+                <div className="rp-section-header">
+                  <span className="rp-section-title">{t.rightPanel?.upNext || 'Up Next'}</span>
+                  <span className="rp-section-badge">{t.rightPanel?.top10 || 'Top 10'}</span>
+                </div>
+                {loadingVideos ? (
+                  <div className="rp-loading">{t.common?.loading || 'Loading...'}</div>
+                ) : topVideos.length === 0 ? (
+                  <div className="rp-empty">{t.rightPanel?.noQueue || 'No videos in queue'}</div>
+                ) : (
+                  <div className="rp-queue-list">
+                    {topVideos.map((video, index) => (
+                      <Link key={video.id} to={`/watch/${video.id}`} className="rp-queue-item" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div className="rp-queue-rank">{index + 1}</div>
+                        <div className="rp-queue-thumb">
+                          {video.thumbnailUrl ? (
+                            <img src={getThumbnailUrl(video.thumbnailUrl)} alt="" />
+                          ) : (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="rp-queue-info">
+                          <div className="rp-queue-title">
+                            {video.title?.slice(0, 30) || `Video ${index + 1}`}
+                          </div>
+                          <div className="rp-queue-views">
+                            {formatCount(video.views || 0)} {t.home?.views || 'views'}
+                            <span className="rp-stat-dot" />
+                            {formatCount(video.likeCount ?? video.Likes?.length ?? 0)} {t.rightPanel?.likesLabel || 'likes'}
+                          </div>
+                        </div>
+                        <div className="rp-play-btn">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                          </svg>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="home-video-rail-section" aria-label="Browse videos">
+            <button
+              type="button"
+              className="home-video-rail-arrow prev"
+              onClick={() => scrollVideoRail(-1)}
+              aria-label="Browse videos left"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+
+            <div className="home-video-rail" ref={videoRailRef}>
+              {filteredVideos.map((video) => (
+                <Link key={video.id} to={`/watch/${video.id}`} className="home-video-rail-card">
+                  <div className="home-video-rail-thumb">
+                    {getVideoThumbnail(video) ? (
+                      <img src={getVideoThumbnail(video)} alt={video.title || 'Video'} loading="lazy" />
+                    ) : (
+                      <div className="home-video-rail-fallback">
+                        <video
+                          src={`${getVideoSrc(video)}#t=1`}
+                          preload="metadata"
+                          muted
+                          playsInline
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--muted)" stroke="none">
+                          <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                      </div>
+                    )}
+                    <span className="home-video-rail-views">{formatCount(video.views || 0)} {t.home.views}</span>
+                  </div>
+                  <div className="home-video-rail-info">
+                    <span className="home-video-rail-title">{video.title || 'Untitled'}</span>
+                    <span className="home-video-rail-meta">@{getCreatorName(video)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="home-video-rail-arrow next"
+              onClick={() => scrollVideoRail(1)}
+              aria-label="Browse videos right"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </section>
+
+          {false && (
+          <>
           {/* Banner Carousel - hidden on mobile */}
           <section 
             className="major_announcement banner-carousel" 
@@ -522,6 +826,8 @@ function Home() {
               </div>
             )}
           </section>
+          </>
+          )}
           {/* Toggle row: Explore Videos + re-open announcements if closed */}
           <div className="home-toggle-row">
             {/* {!announceOpen && totalAnn > 0 && (
@@ -678,8 +984,8 @@ function Home() {
             );
           })()}
 
-          {/* Video Grid */}
-          {loading ? (
+          {/* Legacy video grid removed in favor of the horizontal rail. */}
+          {false && (loading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>
               {t.common.loading}
             </div>
@@ -817,18 +1123,37 @@ function Home() {
                 </div>
               )}
             </div>
-          )}
-        </main>
+          ))}
+          <footer className="home-footer">
+            <div className="home-footer-inner">
+              <div className="home-footer-brand">
+              </div>
 
-        <RightPanel
-          videos={filteredVideos}
-          onPlayVideo={(index) => {
-            const video = filteredVideos[index];
-            if (video) {
-              window.location.href = `/watch/${video.id}`;
-            }
-          }}
-        />
+              <div className="panel rp-section rp-ecosystem-block home-footer-scenex">
+                <img className="rp-ecosystem-logo" src="/scenexai_logo.png" alt="SceneX AI Group" />
+                <p className="rp-ecosystem-copy">
+                  HURAMMY is part of the SceneX AI Immersive & Interactive Entertainment Ecosystem.{' '}
+                  <a href="https://scene-x.ai" target="_blank" rel="noreferrer">
+                    Learn more -&gt;
+                  </a>
+                </p>
+              </div>
+
+              <div className="home-footer-bottom">
+                <div className="home-footer-link-group">
+                  <img src="/logo_hurammy.png" alt="Hurammy" />
+                  <nav aria-label="Footer links">
+                    <Link to="/about">About Us</Link>
+                    <Link to="/terms">Terms of Service</Link>
+                    <Link to="/privacy">Privacy Policy</Link>
+                    <Link to="/help">Help Center</Link>
+                  </nav>
+                </div>
+                <span>&copy; 2026 HURAMMY.COM. All rights reserved.</span>
+              </div>
+            </div>
+          </footer>
+        </main>
       </div>
 
       {/* Share Modal */}
@@ -838,6 +1163,22 @@ function Home() {
         url={shareModal.url}
         title={shareModal.title}
       />
+
+      {constructionPopupOpen && (
+        <div className="home-construction-popup-overlay" onClick={() => setConstructionPopupOpen(false)}>
+          <div className="home-construction-popup" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="home-construction-title">
+            <button
+              type="button"
+              className="home-construction-popup-close"
+              onClick={() => setConstructionPopupOpen(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <h2 id="home-construction-title">Still under construction, please come back soon!</h2>
+          </div>
+        </div>
+      )}
 
       {instructionsOpen && (
         <div className="major_announcement_modal_overlay" onClick={() => setInstructionsOpen(false)}>
