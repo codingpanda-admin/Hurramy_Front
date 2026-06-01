@@ -50,16 +50,6 @@ function CampaignList() {
           <div className="campaign-list-header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', flexWrap: 'wrap', gap: '12px' }}>
             <div>
                 <span className="pill">{c.activeChallenges || 'Active Challenges'}</span>
-                <h1 style={{ 
-                    margin: '12px 0 8px', 
-                    fontSize: 'clamp(20px, 2.4vw, 32px)',
-                    letterSpacing: '-0.3px',
-                }}>
-                    {c.title || 'Video Challenges & Campaigns'}
-                </h1>
-                <p style={{ margin: 0, color: 'var(--muted)', maxWidth: '80ch', lineHeight: 1.6 }}>
-                    {c.subtitle || 'Participate in challenges to rank your videos on the leaderboard.'}
-                </p>
             </div>
 
             {user && user.role === 'admin' && (
@@ -77,23 +67,6 @@ function CampaignList() {
                 </Link>
             )}
           </div>
-          
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: '12px',
-            marginTop: '20px',
-            maxWidth: '500px',
-          }}>
-            <div className="kpi">
-              <b>{campaigns.length}</b>
-              <span>{c.activeCampaigns || 'Active Campaigns'}</span>
-            </div>
-            <div className="kpi">
-              <b>{c.realtime || 'Real-time'}</b>
-              <span>{c.realtimeRanking || 'Ranking Updates'}</span>
-            </div>
-          </div>
         </section>
 
         {/* Campaign Grid */}
@@ -108,12 +81,12 @@ function CampaignList() {
             </div>
           ) : (
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              display: 'flex',
+              flexDirection: 'column',
               gap: '16px',
             }}>
               {campaigns.map(camp => (
-                <article key={camp.id} className="panel" style={{ padding: '20px' }}>
+                <article key={camp.id} className="panel" style={{ padding: '20px', width: '100%' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span className="pill">{c.challenge || 'Challenge'}</span>
                     <span className="pill" style={{ 
@@ -134,14 +107,27 @@ function CampaignList() {
                     {camp.description}
                   </p>
                   
-                  <div style={{ padding: '12px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>{c.endsOn || 'Ends on'}</div>
-                    <div style={{ fontWeight: 700 }}>{formatDate(camp.endDate)}</div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', color: 'var(--muted)', fontSize: '13px', lineHeight: 1.3 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8EDBFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: '0 0 auto' }}>
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      <span>{c.start || 'Start'}: <strong style={{ color: '#8EDBFF', fontWeight: 700 }}>{formatDate(camp.startDate)}</strong></span>
+                      <span>{c.end || 'End'}: <strong style={{ color: '#8EDBFF', fontWeight: 700 }}>{formatDate(camp.endDate)}</strong></span>
+                    </div>
+                    <Link to={`/campaign/${camp.id}`} className="btn primary" style={{ width: 'auto', minWidth: '160px' }}>
+                      Enter Campaign
+                    </Link>
                   </div>
-                  
-                  <Link to={`/campaign/${camp.id}`} className="btn primary" style={{ width: '100%' }}>
-                    {c.viewLeaderboard || 'View Leaderboard'}
-                  </Link>
                 </article>
               ))}
             </div>

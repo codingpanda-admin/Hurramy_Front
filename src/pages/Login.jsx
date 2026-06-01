@@ -123,7 +123,7 @@ function Login() {
         }}>
           <Link to="/" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             <img
-              src="/logo.png"
+              src="/logo_hurammy.png"
               alt={t.common.appName}
               style={{ height: '44px', width: 'auto', objectFit: 'contain' }}
             />

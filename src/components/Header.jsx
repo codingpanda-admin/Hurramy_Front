@@ -8,6 +8,8 @@ import { getAvatarUrl } from '../utils/mediaUtils';
 function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onScrollChange, onOpenInstructions }) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [langOpen, setLangOpen] = useState(false);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [instructionsAutoOpened, setInstructionsAutoOpened] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileSearchVisible, setMobileSearchVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -191,6 +193,18 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     localStorage.setItem('appLanguage', currentLang);
   }, [currentLang]);
 
+  useEffect(() => {
+    if (location.pathname !== '/' || instructionsAutoOpened) return;
+    if (localStorage.getItem('homeInstructionsSeen') === 'true') return;
+    setInstructionsOpen(true);
+    setInstructionsAutoOpened(true);
+  }, [location.pathname, instructionsAutoOpened]);
+
+  const handleCloseInstructions = () => {
+    localStorage.setItem('homeInstructionsSeen', 'true');
+    setInstructionsOpen(false);
+  };
+
   const handleLogout = () => {
     setUserMenuOpen(false);
     localStorage.removeItem('user');
@@ -285,6 +299,13 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+  );
+  const IconInstructions = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <path d="M12 16v-4"/>
+      <path d="M12 8h.01"/>
     </svg>
   );
   const IconPlus = (
@@ -387,7 +408,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     <header className="header-shell">
       <div className="header-inner">
         <Link to="/" className="header-brand">
-          <img src="/logo.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
+          <img src="/logo_hurammy.png" alt="Logo" style={{ height: '40px', width: 'auto', objectFit: 'contain' }}/>
         </Link>
 
         {/* Mobile hamburger menu button */}
@@ -513,6 +534,17 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
               </div>
             )}
           </div>
+
+          {location.pathname === '/' && (
+            <button
+              className="iconBtn"
+              onClick={() => setInstructionsOpen(true)}
+              aria-label="Instructions"
+              title="Instructions"
+            >
+              {IconInstructions}
+            </button>
+          )}
 
           {user ? (
             <>
@@ -818,6 +850,49 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
         </div>
       )}
     </div>
+
+    {instructionsOpen && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="site-instructions-title"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'grid',
+          placeItems: 'center',
+          padding: '18px',
+          background: 'rgba(0,0,0,0.62)',
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        <div className="panel" style={{
+          width: 'min(520px, 100%)',
+          padding: '18px',
+          display: 'grid',
+          gap: '14px',
+          border: '1px solid rgba(234,240,255,0.18)',
+          background: 'rgba(14,18,34,0.96)',
+          boxShadow: '0 28px 90px rgba(0,0,0,0.45)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+            <h2 id="site-instructions-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+              Instructions
+            </h2>
+            <button className="iconBtn" onClick={handleCloseInstructions} aria-label="Close instructions" title="Close">
+              ×
+            </button>
+          </div>
+          <div style={{ color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            Website navigation instructions will appear here.
+          </div>
+          <button className="btn primary" onClick={handleCloseInstructions} style={{ justifySelf: 'end' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 }

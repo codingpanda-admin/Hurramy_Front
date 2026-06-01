@@ -15,6 +15,7 @@ function CampaignDetail() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('points_desc');
   const [toast, setToast] = useState({ show: false, message: '' });
+  const [showFirstTimeGuide, setShowFirstTimeGuide] = useState(() => localStorage.getItem('campaignDetailGuideSeen') !== 'true');
   const [previewVideo, setPreviewVideo] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [previewComments, setPreviewComments] = useState([]);
@@ -209,6 +210,11 @@ function CampaignDetail() {
   const handlePreviewSelect = (video) => {
     shouldAutoplayPreview.current = true;
     setPreviewVideo(video);
+  };
+
+  const handleDismissGuide = () => {
+    localStorage.setItem('campaignDetailGuideSeen', 'true');
+    setShowFirstTimeGuide(false);
   };
 
   const formatNumber = (n) => {
@@ -1141,6 +1147,57 @@ function CampaignDetail() {
         </div>
       )}
 
+      {showFirstTimeGuide && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="campaign-guide-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '18px',
+            background: 'rgba(0,0,0,0.62)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div className="panel" style={{
+            width: 'min(520px, 100%)',
+            padding: '18px',
+            display: 'grid',
+            gap: '14px',
+            border: '1px solid rgba(234,240,255,0.18)',
+            background: 'rgba(14,18,34,0.96)',
+            boxShadow: '0 28px 90px rgba(0,0,0,0.45)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <h2 id="campaign-guide-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                Campaign quick guide
+              </h2>
+              <button className="iconBtn" onClick={handleDismissGuide} aria-label="Close guide" title="Close">
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              <div style={{ color: 'rgba(234,240,255,0.88)', fontSize: '14px' }}>
+                1. <b>Instruction</b> - Click Instruction to see campaign instructions.
+              </div>
+              <div style={{ color: 'rgba(234,240,255,0.88)', fontSize: '14px' }}>
+                2. <b>Judge</b> - Click judge to view campaign judges.
+              </div>
+              <div style={{ color: 'rgba(234,240,255,0.88)', fontSize: '14px' }}>
+                3. <b>Select video to join campaign</b> - select your video to join campaign.
+              </div>
+            </div>
+            <button className="btn primary" onClick={handleDismissGuide} style={{ justifySelf: 'end' }}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={`toast ${toast.show ? 'show' : ''}`}>
         {toast.message}
       </div>
@@ -1154,22 +1211,25 @@ function CampaignDetail() {
             inset: 0,
             background: 'rgba(0,0,0,0.85)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: '20px',
+            padding: '5vh 20px',
           }}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'relative',
-              maxWidth: '90vw',
+              width: '100%',
+              maxWidth: '700px',
               maxHeight: '90vh',
               borderRadius: '16px',
               overflow: 'hidden',
               background: 'var(--bg)',
               border: '1px solid rgba(234,240,255,0.2)',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             <button
@@ -1190,20 +1250,22 @@ function CampaignDetail() {
                 justifyContent: 'center',
                 fontSize: '20px',
                 zIndex: 10,
+                backdropFilter: 'blur(4px)',
               }}
             >
               &times;
             </button>
-            <img
-              src={getMediaUrl(campaign.instructionsImageUrl)}
-              alt={`${campaign.name} Instructions`}
-              style={{
-                display: 'block',
-                maxWidth: '100%',
-                maxHeight: '85vh',
-                objectFit: 'contain',
-              }}
-            />
+            <div style={{ flex: 1, overflowY: 'auto', width: '100%' }}>
+              <img
+                src={getMediaUrl(campaign.instructionsImageUrl)}
+                alt={`${campaign.name} Instructions`}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: 'auto',
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
