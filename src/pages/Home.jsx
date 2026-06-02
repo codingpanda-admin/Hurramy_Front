@@ -12,6 +12,14 @@ const ROTATE_MS = 6000;
 const BANNER_ROTATE_MS = 5000; // Banner carousel rotation time
 const ENDING_SOON_DAYS = 3; // campaigns ending within 3 days get special color
 
+const getStoredUserEmail = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || 'null')?.email || '';
+  } catch {
+    return '';
+  }
+};
+
 function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
@@ -32,6 +40,8 @@ function Home() {
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [shareModal, setShareModal] = useState({ open: false, url: '', title: '' });
   const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [helpCenterOpen, setHelpCenterOpen] = useState(false);
+  const [helpForm, setHelpForm] = useState({ email: getStoredUserEmail(), subject: '', message: '' });
   const [constructionPopupOpen, setConstructionPopupOpen] = useState(false);
   
   // Intersection observer for infinite scroll
@@ -470,6 +480,19 @@ function Home() {
   const showToast = (message) => {
     setToast({ show: true, message });
     setTimeout(() => setToast({ show: false, message: '' }), 2000);
+  };
+
+  const openHelpCenter = () => {
+    setHelpForm(prev => ({ ...prev, email: getStoredUserEmail() || prev.email }));
+    setHelpCenterOpen(true);
+  };
+
+  const handleHelpSubmit = (e) => {
+    e.preventDefault();
+    const subject = encodeURIComponent(helpForm.subject || 'Help Center Request');
+    const body = encodeURIComponent(`Email: ${helpForm.email}\n\n${helpForm.message}`);
+    window.location.href = `mailto:hurammy.help@gmail.com?subject=${subject}&body=${body}`;
+    setHelpCenterOpen(false);
   };
 
   const formatCount = (count) => {
@@ -1157,7 +1180,13 @@ function Home() {
                     <Link to="/about">About Us</Link>
                     <Link to="/terms">Terms of Service</Link>
                     <Link to="/privacy">Privacy Policy</Link>
-                    <a href="mailto:hurammy.help@gmail.com">Help Center</a>
+                    <button
+                      type="button"
+                      onClick={openHelpCenter}
+                      style={{ background: 'none', border: 0, padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+                    >
+                      Help Center
+                    </button>
                   </nav>
                 </div>
                 <span>&copy; 2026 HURAMMY.COM. All rights reserved.</span>
@@ -1174,6 +1203,90 @@ function Home() {
         url={shareModal.url}
         title={shareModal.title}
       />
+
+      {helpCenterOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="help-center-title"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '18px',
+            background: 'rgba(0,0,0,0.62)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <form
+            className="panel"
+            onSubmit={handleHelpSubmit}
+            style={{
+              width: 'min(560px, 100%)',
+              padding: '18px',
+              display: 'grid',
+              gap: '14px',
+              border: '1px solid rgba(234,240,255,0.18)',
+              background: 'rgba(14,18,34,0.96)',
+              boxShadow: '0 28px 90px rgba(0,0,0,0.45)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+              <h2 id="help-center-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
+                Help Center
+              </h2>
+              <button type="button" className="iconBtn" onClick={() => setHelpCenterOpen(false)} aria-label="Close Help Center" title="Close">
+                ×
+              </button>
+            </div>
+
+            <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
+              Email
+              <input
+                className="input"
+                type="email"
+                value={helpForm.email}
+                onChange={e => setHelpForm(prev => ({ ...prev, email: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
+              Subject
+              <input
+                className="input"
+                type="text"
+                value={helpForm.subject}
+                onChange={e => setHelpForm(prev => ({ ...prev, subject: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
+              Message
+              <textarea
+                className="input"
+                value={helpForm.message}
+                onChange={e => setHelpForm(prev => ({ ...prev, message: e.target.value }))}
+                rows={6}
+                required
+                style={{ resize: 'vertical', minHeight: '130px' }}
+              />
+            </label>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
+              <button type="button" className="btn" onClick={() => setHelpCenterOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn primary">
+                Submit
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {constructionPopupOpen && (
         <div className="home-construction-popup-overlay" onClick={() => setConstructionPopupOpen(false)}>
