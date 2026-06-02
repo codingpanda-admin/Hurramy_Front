@@ -4,6 +4,7 @@ import axios from 'axios';
 import Header from '../components/Header';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
+import { getMediaUrl } from '../utils/mediaUtils';
 function CampaignList() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,8 +86,16 @@ function CampaignList() {
               flexDirection: 'column',
               gap: '16px',
             }}>
-              {campaigns.map(camp => (
-                <article key={camp.id} className="panel" style={{ padding: '20px', width: '100%' }}>
+              {campaigns.map(camp => {
+                const bannerUrl = camp.bannerUrl ? getMediaUrl(camp.bannerUrl) : null;
+                return (
+                <article key={camp.id} className="panel" style={{
+                  padding: '20px',
+                  width: '100%',
+                  background: bannerUrl
+                    ? `linear-gradient(90deg, rgba(7,10,22,0.34), rgba(7,10,22,0.14)), url("${encodeURI(bannerUrl)}") center / cover no-repeat`
+                    : undefined
+                }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
                     <span className="pill">{c.challenge || 'Challenge'}</span>
                     <span className="pill" style={{ 
@@ -129,7 +138,8 @@ function CampaignList() {
                     </Link>
                   </div>
                 </article>
-              ))}
+              );
+              })}
             </div>
           )}
         </section>
