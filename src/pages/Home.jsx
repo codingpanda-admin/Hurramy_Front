@@ -512,8 +512,15 @@ function Home() {
               ) : (() => {
                 const campaign = activeCampaigns[hudCampaignIdx % activeCampaigns.length];
                 const daysLeft = getDaysLeft(campaign.endDate);
+                const bannerUrl = getCampaignBannerUrl(campaign.bannerUrl);
                 return (
-                  <div className="home-banner-hud-card" key={campaign.id}>
+                  <div
+                    className="home-banner-hud-card"
+                    key={campaign.id}
+                    style={bannerUrl ? {
+                      backgroundImage: `linear-gradient(rgba(5,8,22,0.38), rgba(5,8,22,0.48)), url("${encodeURI(bannerUrl)}")`
+                    } : undefined}
+                  >
                     <div className="home-banner-hud-label">
                       <span className="home-banner-hud-pulse" aria-hidden="true" />
                       <span>Active Campaign</span>
@@ -551,11 +558,12 @@ function Home() {
 
           <section className="home-feature-blockers" aria-label="Hurammy categories">
             <div className="home-feature-blocker home-feature-karaoke">
+              <button type="button" className="home-feature-live-btn">
+                <span className="home-feature-live-indicator" aria-hidden="true" />
+                <span>live</span>
+              </button>
               <div className="home-feature-karaoke-panel">
-                <button type="button" className="home-feature-live-btn">
-                  <span className="home-feature-live-indicator" aria-hidden="true" />
-                  <span>live</span>
-                </button>
+                <div className="home-feature-panel-header">Karaoke Contest</div>
                 <div className="home-feature-karaoke-copy">
                   <strong>Voice of Washington</strong>
                   <Link to="/campaigns" className="home-feature-karaoke-btn">Join Now</Link>
@@ -563,11 +571,12 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-script">
+              <button type="button" className="home-feature-live-btn">
+                <span className="home-feature-live-indicator" aria-hidden="true" />
+                <span>live</span>
+              </button>
               <div className="home-feature-info-panel">
-                <button type="button" className="home-feature-live-btn">
-                  <span className="home-feature-live-indicator" aria-hidden="true" />
-                  <span>live</span>
-                </button>
+                <div className="home-feature-panel-header">Script Contest</div>
                 <div className="home-feature-script-copy">
                   <strong>Short Drama Script Context</strong>
                   <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Submit Now</button>
@@ -575,11 +584,12 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-short-drama">
+              <button type="button" className="home-feature-live-btn">
+                <span className="home-feature-live-indicator" aria-hidden="true" />
+                <span>live</span>
+              </button>
               <div className="home-feature-info-panel">
-                <button type="button" className="home-feature-live-btn">
-                  <span className="home-feature-live-indicator" aria-hidden="true" />
-                  <span>live</span>
-                </button>
+                <div className="home-feature-panel-header">Short Dramas</div>
                 <div className="home-feature-script-copy">
                   <strong>Short Drama</strong>
                   <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
@@ -587,11 +597,12 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-community">
+              <button type="button" className="home-feature-live-btn">
+                <span className="home-feature-live-indicator" aria-hidden="true" />
+                <span>live</span>
+              </button>
               <div className="home-feature-info-panel">
-                <button type="button" className="home-feature-live-btn">
-                  <span className="home-feature-live-indicator" aria-hidden="true" />
-                  <span>live</span>
-                </button>
+                <div className="home-feature-panel-header">Community</div>
                 <div className="home-feature-script-copy">
                   <strong>Community</strong>
                   <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
@@ -1146,7 +1157,7 @@ function Home() {
                     <Link to="/about">About Us</Link>
                     <Link to="/terms">Terms of Service</Link>
                     <Link to="/privacy">Privacy Policy</Link>
-                    <Link to="/help">Help Center</Link>
+                    <a href="mailto:hurammy.help@gmail.com">Help Center</a>
                   </nav>
                 </div>
                 <span>&copy; 2026 HURAMMY.COM. All rights reserved.</span>
