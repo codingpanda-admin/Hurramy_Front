@@ -600,6 +600,63 @@ input[type="range"] {
   background: #19D3FF;
 }
 
+@media (max-width: 768px) {
+  .home-top-image-block {
+    min-height: clamp(256px, calc((105vw - 40px) * 0.8), 384px);
+  }
+
+  .home-top-image-block img {
+    height: 100%;
+    min-height: inherit;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  .home-banner-hud {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    height: calc((75vw - 35px) * 0.8);
+    min-height: 0;
+    max-height: calc(100% - 28px);
+    box-sizing: border-box;
+    aspect-ratio: auto;
+    padding: 10px;
+    transform: translateY(calc(-50% + 40px));
+    overflow: hidden;
+  }
+
+  .home-banner-hud-card {
+    height: 100%;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 10px;
+    gap: 7px;
+    overflow: hidden;
+  }
+
+  .home-banner-hud h2 {
+    font-size: clamp(14px, 4vw, 20px);
+  }
+
+  .home-banner-hud p {
+    font-size: 11px;
+    -webkit-line-clamp: 2;
+  }
+
+  .home-banner-hud-meta {
+    gap: 5px;
+    font-size: 10px;
+  }
+
+  .home-banner-hud-link {
+    min-height: 28px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+}
+
 .home-news-rail {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -635,6 +692,17 @@ input[type="range"] {
   letter-spacing: 0;
 }
 
+@media (max-width: 768px) {
+  .home-news-rail {
+    padding-left: 10px;
+    padding-right: 25px;
+  }
+
+  .home-news-rail span {
+    display: none;
+  }
+}
+
 .home-feature-blockers {
   width: 100vw;
   margin-left: calc(50% - 50vw);
@@ -643,7 +711,7 @@ input[type="range"] {
   padding: 0 10px;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 14px;
   align-items: stretch;
 }
@@ -1087,6 +1155,24 @@ input[type="range"] {
   width: 24px;
   height: 24px;
   border-radius: 7px;
+}
+
+@media (max-width: 768px) {
+  .home-feature-blockers {
+    gap: 10px;
+  }
+
+  .home-feature-blocker {
+    box-sizing: border-box;
+    width: calc((100% - 10px) / 2);
+    min-width: 0;
+    flex: 0 0 calc((100% - 10px) / 2);
+  }
+
+  .home-feature-side-panels {
+    width: 100%;
+    flex: 0 0 100%;
+  }
 }
 
 .home-video-rail-section {
