@@ -44,6 +44,7 @@ function Home() {
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   const [helpForm, setHelpForm] = useState({ email: getStoredUserEmail(), subject: '', message: '' });
   const [constructionPopupOpen, setConstructionPopupOpen] = useState(false);
+  const [successAlert, setSuccessAlert] = useState({ show: false, message: '' });
   
   // Intersection observer for infinite scroll
   const { ref: loadMoreRef, inView } = useInView({
@@ -515,12 +516,24 @@ function Home() {
     setHelpCenterOpen(true);
   };
 
-  const handleHelpSubmit = (e) => {
+  const handleHelpSubmit = async (e) => {
     e.preventDefault();
-    const subject = encodeURIComponent(helpForm.subject || 'Help Center Request');
-    const body = encodeURIComponent(`Email: ${helpForm.email}\n\n${helpForm.message}`);
-    window.location.href = `mailto:hurammy.help@gmail.com?subject=${subject}&body=${body}`;
-    setHelpCenterOpen(false);
+    try {
+      const response = await axios.post(`${API_URL}/support`, {
+        email: helpForm.email,
+        subject: helpForm.subject,
+        message: helpForm.message
+      });
+      setHelpForm(prev => ({ ...prev, subject: '', message: '' }));
+      setHelpCenterOpen(false);
+      setSuccessAlert({
+        show: true,
+        message: response.data?.message || 'Support request sent successfully!'
+      });
+    } catch (error) {
+      console.error('Error submitting help request:', error);
+      showToast(error.response?.data?.message || 'Error sending support request.');
+    }
   };
 
   const formatCount = (count) => {
@@ -1434,6 +1447,27 @@ function Home() {
                 <li>One Voice • One World</li>
               </ul>
             </div>
+          </div>
+        </div>
+      )}
+
+      {successAlert.show && (
+        <div className="custom-success-alert-overlay" onClick={() => setSuccessAlert({ show: false, message: '' })}>
+          <div className="custom-success-alert-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="custom-success-alert-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h2 className="custom-success-alert-title">¡Enviado con éxito!</h2>
+            <p className="custom-success-alert-message">{successAlert.message}</p>
+            <button 
+              type="button" 
+              className="custom-success-alert-btn" 
+              onClick={() => setSuccessAlert({ show: false, message: '' })}
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
