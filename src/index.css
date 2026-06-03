@@ -1203,6 +1203,19 @@ input[type="range"] {
   display: none;
 }
 
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(25, 211, 255, 0.15);
+  border-top-color: #19D3FF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .home-video-rail-card {
   flex: 0 0 230px;
   min-width: 0;

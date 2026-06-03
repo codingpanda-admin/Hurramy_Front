@@ -27,7 +27,7 @@ function Home() {
   
   const [videos, setVideos] = useState([]);
   const [filteredVideos, setFilteredVideos] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('all');
+  const [activeCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -52,7 +52,7 @@ function Home() {
   });
 
   const [announceOpen, setAnnounceOpen] = useState(false);
-  const [exploreOpen] = useState(false);
+  // const [exploreOpen] = useState(false);
   const [allAnnouncements, setAllAnnouncements] = useState([]);
   const [annIdx, setAnnIdx] = useState(0);
   const timerRef = useRef(null);
@@ -77,6 +77,7 @@ function Home() {
   const ann = t.campaignAnnounce || {};
   const sysAnn = t.systemAnnounce || {};
 
+  /*
   const categories = [
     { key: 'all', label: t.home.all },
     { key: 'Gaming', label: t.home.gaming },
@@ -85,36 +86,79 @@ function Home() {
     { key: 'Clips', label: t.home.clips },
     { key: 'Highlights', label: t.home.highlights },
   ];
+  */
 
-  useEffect(() => {
-    loadVideos();
-    loadTopCreators();
-    loadTopVideos();
-  }, []);
+  const showBannerCarousel = false;
+  const showLegacyGrid = false;
 
-  // Load campaigns for banner carousel and announcements
-  useEffect(() => {
-    loadCampaignAnnouncements();
-  }, []);
+  // ── Derived State ──
+  const totalAnn = allAnnouncements.length;
+  const totalBannerSlides = bannerCampaigns.length + 1; // +1 for main banner
 
-  useEffect(() => {
-    axios.get(`${API_URL}/announcements/active`)
-      .then(res => setSimpleAnnouncements(res.data))
-      .catch(err => console.error('Error loading announcements:', err));
-  }, []);
+  // ── Helper Functions ──
+  const startProgress = useCallback(() => {
+    if (!progressRef.current || allAnnouncements.length === 0) return;
+    progressRef.current.style.transition = 'none';
+    progressRef.current.style.width = '0%';
+    requestAnimationFrame(() => {
+      if (!progressRef.current) return;
+      progressRef.current.style.transition = `width ${ROTATE_MS}ms linear`;
+      progressRef.current.style.width = '100%';
+    });
+  }, [allAnnouncements.length]);
 
-  useEffect(() => {
-    applyFilters(searchQuery);
-  }, [activeCategory, videos, searchQuery]);
-  
-  // Apply initial search from URL params when videos load
-  useEffect(() => {
-    if (initialSearch && videos.length > 0) {
-      applyFilters(initialSearch);
+  const setAnn = useCallback((i) => {
+    const len = allAnnouncements.length;
+    if (len === 0) return;
+    setAnnIdx(((i % len) + len) % len);
+    clearInterval(timerRef.current);
+    startProgress();
+    timerRef.current = setInterval(() => {
+      setAnnIdx(prev => (prev + 1) % len);
+      startProgress();
+    }, ROTATE_MS);
+  }, [allAnnouncements.length, startProgress]);
+
+  const nextBanner = useCallback(() => {
+    setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+  }, [totalBannerSlides]);
+
+  const prevBanner = useCallback(() => {
+    setBannerIdx(prev => (prev - 1 + totalBannerSlides) % totalBannerSlides);
+  }, [totalBannerSlides]);
+
+  const handleBannerMouseDown = (e) => {
+    bannerDragRef.current.startX = e.clientX;
+    bannerDragRef.current.isDragging = true;
+    clearInterval(bannerTimerRef.current);
+  };
+
+  const handleBannerMouseUp = (e) => {
+    if (!bannerDragRef.current.isDragging) return;
+    const diff = e.clientX - bannerDragRef.current.startX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        prevBanner();
+      } else {
+        nextBanner();
+      }
+    } else {
+      bannerTimerRef.current = setInterval(() => {
+        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+      }, BANNER_ROTATE_MS);
     }
-  }, [videos.length]);
+    bannerDragRef.current.isDragging = false;
+  };
 
-  /* ── Build system (static) announcements ── */
+  const handleBannerMouseLeave = () => {
+    if (bannerDragRef.current.isDragging) {
+      bannerDragRef.current.isDragging = false;
+      bannerTimerRef.current = setInterval(() => {
+        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
+      }, BANNER_ROTATE_MS);
+    }
+  };
+
   const buildSystemAnnouncements = () => {
     return [
       { _sys: true, type: 'feature', sysKey: 'aiVideoGeneration' },
@@ -126,8 +170,52 @@ function Home() {
     ];
   };
 
-  /* ── Load campaigns and merge with system announcements ── */
-  const loadCampaignAnnouncements = () => {
+  const getCampaignBannerUrl = (url) => {
+    if (!url) return null;
+    return getMediaUrl(url);
+  };
+
+  const getDaysLeft = (endDate) => {
+    const ms = new Date(endDate) - new Date();
+    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toLocaleDateString(lang === 'es' ? 'es-ES' : lang === 'zh' ? 'zh-CN' : 'en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
+    });
+  };
+
+  const applyFilters = useCallback((query = '') => {
+    let list = videos;
+    if (activeCategory !== 'all') {
+      list = list.filter(v => v.category === activeCategory);
+    }
+    if (query) {
+      const q = query.toLowerCase();
+      list = list.filter(v =>
+        v.title?.toLowerCase().includes(q) ||
+        v.description?.toLowerCase().includes(q) ||
+        (v.User?.email && v.User.email.toLowerCase().includes(q))
+      );
+    }
+    setFilteredVideos(list);
+  }, [videos, activeCategory]);
+
+  const handleSearch = useCallback((query, isSubmit = false) => {
+    setSearchQuery(query);
+    applyFilters(query);
+    if (isSubmit) {
+      if (query && query.trim()) {
+        setSearchParams({ search: query.trim() });
+      } else {
+        setSearchParams({});
+      }
+    }
+  }, [applyFilters, setSearchParams]);
+
+  const loadCampaignAnnouncements = useCallback(() => {
     const systemItems = buildSystemAnnouncements();
 
     axios.get(`${API_URL}/campaigns`)
@@ -141,12 +229,10 @@ function Home() {
         const campaignItems = [];
         const sorted = [...active].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-        // Most recent campaign
         if (sorted[0]) {
           campaignItems.push({ ...sorted[0], type: 'new', _sys: false });
         }
 
-        // Ending soon (within ENDING_SOON_DAYS)
         const ending = active
           .filter(c => {
             const daysLeft = (new Date(c.endDate) - now) / (1000 * 60 * 60 * 24);
@@ -162,7 +248,6 @@ function Home() {
           }
         });
 
-        // Popular: oldest active campaign
         if (sorted.length >= 2) {
           const popular = sorted[sorted.length - 1];
           if (!campaignItems.find(i => i.id === popular.id)) {
@@ -170,44 +255,135 @@ function Home() {
           }
         }
 
-        // Remaining campaigns
         active.forEach(c => {
           if (!campaignItems.find(i => i.id === c.id)) {
             campaignItems.push({ ...c, type: 'new', _sys: false });
           }
         });
 
-        // Interleave: campaigns first (ending first), then system announcements
         const endingFirst = campaignItems.filter(c => c.type === 'ending');
         const rest = campaignItems.filter(c => c.type !== 'ending');
         setAllAnnouncements([...endingFirst, ...rest, ...systemItems]);
 
-        // Set banner campaigns (only campaigns with banners)
         const campaignsWithBanners = active.filter(c => c.bannerUrl);
         setActiveCampaigns(active);
         setBannerCampaigns(campaignsWithBanners);
       })
       .catch(() => {
-        // If campaigns fail, still show system announcements
         setAllAnnouncements(systemItems);
         setActiveCampaigns([]);
         setBannerCampaigns([]);
       });
-  };
+  }, []);
 
-  /* ── Announcement rotation ── */
-  const totalAnn = allAnnouncements.length;
+  const loadVideos = useCallback((pageNum = 1, append = false) => {
+    if (pageNum === 1) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+    
+    axios.get(`${API_URL}/videos?page=${pageNum}&limit=6`)
+      .then(response => {
+        const { videos: newVideos, hasMore: more, currentPage } = response.data;
+        
+        if (append && pageNum > 1) {
+          setVideos(prev => [...prev, ...newVideos]);
+          setFilteredVideos(prev => [...prev, ...newVideos]);
+        } else {
+          setVideos(newVideos);
+          setFilteredVideos(newVideos);
+        }
+        
+        setPage(currentPage);
+        setHasMore(more);
 
-  const startProgress = useCallback(() => {
-    if (!progressRef.current || totalAnn === 0) return;
-    progressRef.current.style.transition = 'none';
-    progressRef.current.style.width = '0%';
-    requestAnimationFrame(() => {
-      if (!progressRef.current) return;
-      progressRef.current.style.transition = `width ${ROTATE_MS}ms linear`;
-      progressRef.current.style.width = '100%';
-    });
-  }, [totalAnn]);
+        const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+        if (storedUser) {
+          const liked = {};
+          newVideos.forEach(v => {
+            if (v.Likes && v.Likes.some(l => l.userId === storedUser.id)) {
+              liked[v.id] = true;
+            }
+          });
+          setLikedVideos(prev => append ? { ...prev, ...liked } : liked);
+        }
+      })
+      .catch(error => console.error(error))
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
+  }, []);
+
+  const loadTopCreators = useCallback(() => {
+    setLoadingCreators(true);
+    const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const params = storedUser ? `?userId=${storedUser.id}` : '';
+    axios.get(`${API_URL}/users/top-creators${params}`)
+      .then(res => setTopCreators((res.data || []).slice(0, 10)))
+      .catch(() => setTopCreators([]))
+      .finally(() => setLoadingCreators(false));
+  }, []);
+
+  const loadTopVideos = useCallback(() => {
+    setLoadingVideos(true);
+    axios.get(`${API_URL}/videos/top`)
+      .then(res => setTopVideos((res.data || []).slice(0, 10)))
+      .catch(() => {
+        return axios.get(`${API_URL}/videos`)
+          .then(res => {
+            const sorted = [...(res.data || [])].sort((a, b) => {
+              const aScore = (a.views || 0) + (a.Likes?.length || a.likeCount || 0) * 3;
+              const bScore = (b.views || 0) + (b.Likes?.length || b.likeCount || 0) * 3;
+              return bScore - aScore;
+            }).slice(0, 10);
+            setTopVideos(sorted);
+          })
+          .catch(() => setTopVideos([]));
+          })
+      .finally(() => setLoadingVideos(false));
+  }, []);
+
+
+  // ── Effects ──
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadVideos();
+      loadTopCreators();
+      loadTopVideos();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadVideos, loadTopCreators, loadTopVideos]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCampaignAnnouncements();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [loadCampaignAnnouncements]);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/announcements/active`)
+      .then(res => setSimpleAnnouncements(res.data))
+      .catch(err => console.error('Error loading announcements:', err));
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      applyFilters(searchQuery);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeCategory, videos, searchQuery, applyFilters]);
+  
+  useEffect(() => {
+    if (initialSearch && videos.length > 0) {
+      const timer = setTimeout(() => {
+        applyFilters(initialSearch);
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [videos.length, initialSearch, applyFilters]);
 
   useEffect(() => {
     if (!announceOpen || totalAnn === 0) { clearInterval(timerRef.current); return; }
@@ -228,7 +404,6 @@ function Home() {
   }, [activeCampaigns.length]);
 
   // Banner carousel auto-rotation (5 seconds)
-  const totalBannerSlides = bannerCampaigns.length + 1; // +1 for main banner
   useEffect(() => {
     if (totalBannerSlides <= 1) return;
     bannerTimerRef.current = setInterval(() => {
@@ -237,155 +412,15 @@ function Home() {
     return () => clearInterval(bannerTimerRef.current);
   }, [totalBannerSlides, bannerIdx]);
 
-  const nextBanner = () => {
-    setBannerIdx(prev => (prev + 1) % totalBannerSlides);
-  };
-
-  const prevBanner = () => {
-    setBannerIdx(prev => (prev - 1 + totalBannerSlides) % totalBannerSlides);
-  };
-
-  // Mouse drag handlers for banner carousel
-  const handleBannerMouseDown = (e) => {
-    bannerDragRef.current.startX = e.clientX;
-    bannerDragRef.current.isDragging = true;
-    clearInterval(bannerTimerRef.current);
-  };
-
-  const handleBannerMouseUp = (e) => {
-    if (!bannerDragRef.current.isDragging) return;
-    const diff = e.clientX - bannerDragRef.current.startX;
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        prevBanner();
-      } else {
-        nextBanner();
-      }
-    } else {
-      // Restart timer if no slide change
-      bannerTimerRef.current = setInterval(() => {
-        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
-      }, BANNER_ROTATE_MS);
-    }
-    bannerDragRef.current.isDragging = false;
-  };
-
-  const handleBannerMouseLeave = () => {
-    if (bannerDragRef.current.isDragging) {
-      bannerDragRef.current.isDragging = false;
-      bannerTimerRef.current = setInterval(() => {
-        setBannerIdx(prev => (prev + 1) % totalBannerSlides);
-      }, BANNER_ROTATE_MS);
-    }
-  };
-
-  // Helper to get campaign banner URL - uses centralized mediaUtils
-  const getCampaignBannerUrl = (url) => {
-    if (!url) return null;
-    return getMediaUrl(url);
-  };
-
-  const setAnn = (i) => {
-    if (totalAnn === 0) return;
-    setAnnIdx(((i % totalAnn) + totalAnn) % totalAnn);
-    clearInterval(timerRef.current);
-    startProgress();
-    timerRef.current = setInterval(() => {
-      setAnnIdx(prev => (prev + 1) % totalAnn);
-      startProgress();
-    }, ROTATE_MS);
-  };
-
-  const getDaysLeft = (endDate) => {
-    const ms = new Date(endDate) - new Date();
-    const days = Math.ceil(ms / (1000 * 60 * 60 * 24));
-    return days;
-  };
-
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString(lang === 'es' ? 'es-ES' : lang === 'zh' ? 'zh-CN' : 'en-US', {
-      month: 'short', day: 'numeric', year: 'numeric'
-    });
-  };
-
-  const loadVideos = useCallback((pageNum = 1, append = false) => {
-    if (pageNum === 1) {
-      setLoading(true);
-    } else {
-      setLoadingMore(true);
-    }
-    
-    axios.get(`${API_URL}/videos?page=${pageNum}&limit=6`)
-      .then(response => {
-        const { videos: newVideos, hasMore: more, currentPage } = response.data;
-        
-        if (append && pageNum > 1) {
-          // Append new videos to existing list
-          setVideos(prev => [...prev, ...newVideos]);
-          setFilteredVideos(prev => [...prev, ...newVideos]);
-        } else {
-          // Replace videos (first page load)
-          setVideos(newVideos);
-          setFilteredVideos(newVideos);
-        }
-        
-        setPage(currentPage);
-        setHasMore(more);
-
-        // Initialize liked state from existing likes for the current user
-        if (user) {
-          const liked = {};
-          const allVideos = append ? [...videos, ...newVideos] : newVideos;
-          allVideos.forEach(v => {
-            if (v.Likes && v.Likes.some(l => l.userId === user.id)) {
-              liked[v.id] = true;
-            }
-          });
-          setLikedVideos(prev => append ? { ...prev, ...liked } : liked);
-        }
-      })
-      .catch(error => console.error(error))
-      .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
-      });
-  }, [user, videos]);
-
-  // Load more when scrolling to the bottom
+  // Load more when scrolling to the bottom (or horizontal rail sentinel)
   useEffect(() => {
     if (inView && hasMore && !loading && !loadingMore) {
-      loadVideos(page + 1, true);
+      const timer = setTimeout(() => {
+        loadVideos(page + 1, true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [inView, hasMore, loading, loadingMore, page]);
-
-  const applyFilters = (query = '') => {
-    let list = videos;
-    if (activeCategory !== 'all') {
-      list = list.filter(v => v.category === activeCategory);
-    }
-    if (query) {
-      const q = query.toLowerCase();
-      list = list.filter(v =>
-        v.title?.toLowerCase().includes(q) ||
-        v.description?.toLowerCase().includes(q) ||
-        (v.User?.email && v.User.email.toLowerCase().includes(q))
-      );
-    }
-    setFilteredVideos(list);
-  };
-
-  const handleSearch = (query, isSubmit = false) => {
-    setSearchQuery(query);
-    applyFilters(query);
-    // Update URL search params only on submit
-    if (isSubmit) {
-      if (query && query.trim()) {
-        setSearchParams({ search: query.trim() });
-      } else {
-        setSearchParams({});
-      }
-    }
-  };
+  }, [inView, hasMore, loading, loadingMore, page, loadVideos]);
 
   const handleShare = (e, video) => {
     e.preventDefault();
@@ -428,33 +463,7 @@ function Home() {
     }
   };
 
-  const loadTopCreators = () => {
-    setLoadingCreators(true);
-    const params = user ? `?userId=${user.id}` : '';
-    axios.get(`${API_URL}/users/top-creators${params}`)
-      .then(res => setTopCreators((res.data || []).slice(0, 10)))
-      .catch(() => setTopCreators([]))
-      .finally(() => setLoadingCreators(false));
-  };
 
-  const loadTopVideos = () => {
-    setLoadingVideos(true);
-    axios.get(`${API_URL}/videos/top`)
-      .then(res => setTopVideos((res.data || []).slice(0, 10)))
-      .catch(() => {
-        return axios.get(`${API_URL}/videos`)
-          .then(res => {
-            const sorted = [...(res.data || [])].sort((a, b) => {
-              const aScore = (a.views || 0) + (a.Likes?.length || a.likeCount || 0) * 3;
-              const bScore = (b.views || 0) + (b.Likes?.length || b.likeCount || 0) * 3;
-              return bScore - aScore;
-            }).slice(0, 10);
-            setTopVideos(sorted);
-          })
-          .catch(() => setTopVideos([]));
-      })
-      .finally(() => setLoadingVideos(false));
-  };
 
   const handleToggleFollow = async (creatorId) => {
     if (!user) {
@@ -789,6 +798,22 @@ function Home() {
                   </div>
                 </Link>
               ))}
+              {hasMore && (
+                <div 
+                  ref={loadMoreRef} 
+                  className="home-video-rail-sentinel"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '80px',
+                    height: '100%',
+                    alignSelf: 'stretch',
+                  }}
+                >
+                  {loadingMore && <div className="loading-spinner" />}
+                </div>
+              )}
             </div>
 
             <button
@@ -803,7 +828,7 @@ function Home() {
             </button>
           </section>
 
-          {false && (
+          {showBannerCarousel && (
           <>
           {/* Banner Carousel - hidden on mobile */}
           <section 
@@ -1047,7 +1072,7 @@ function Home() {
           })()}
 
           {/* Legacy video grid removed in favor of the horizontal rail. */}
-          {false && (loading ? (
+          {showLegacyGrid && (loading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>
               {t.common.loading}
             </div>
