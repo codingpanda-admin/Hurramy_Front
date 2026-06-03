@@ -136,7 +136,12 @@ function VideoPlayer() {
         setComments(res.data.Comments || []);
         setVideoFlowers(res.data.flowers || 0);
         if (user && res.data.Likes) {
-          setIsLiked(res.data.Likes.some(like => like.userId === user.id));
+          const userLikes = res.data.Likes.filter(like => like.userId === user.id);
+          const hasRecentLike = userLikes.some(like => {
+            const diffMs = new Date() - new Date(like.createdAt);
+            return diffMs < 24 * 60 * 60 * 1000;
+          });
+          setIsLiked(hasRecentLike);
         }
       })
       .catch(err => console.error("Error cargando video:", err));

@@ -301,9 +301,17 @@ function Home() {
         const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
         if (storedUser) {
           const liked = {};
+          const now = new Date();
           newVideos.forEach(v => {
-            if (v.Likes && v.Likes.some(l => l.userId === storedUser.id)) {
-              liked[v.id] = true;
+            if (v.Likes) {
+              const userLikes = v.Likes.filter(l => l.userId === storedUser.id);
+              const hasRecentLike = userLikes.some(l => {
+                const diffMs = now - new Date(l.createdAt);
+                return diffMs < 24 * 60 * 60 * 1000;
+              });
+              if (hasRecentLike) {
+                liked[v.id] = true;
+              }
             }
           });
           setLikedVideos(prev => append ? { ...prev, ...liked } : liked);

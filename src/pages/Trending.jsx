@@ -31,8 +31,16 @@ function Trending() {
         setVideos(res.data);
         if (user) {
           const liked = {};
+          const now = new Date();
           res.data.forEach(v => {
-            if (v.Likes && v.Likes.some(l => l.userId === user.id)) liked[v.id] = true;
+            if (v.Likes) {
+              const userLikes = v.Likes.filter(l => l.userId === user.id);
+              const hasRecentLike = userLikes.some(l => {
+                const diffMs = now - new Date(l.createdAt);
+                return diffMs < 24 * 60 * 60 * 1000;
+              });
+              if (hasRecentLike) liked[v.id] = true;
+            }
           });
           setLikedVideos(liked);
         }
