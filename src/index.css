@@ -680,7 +680,7 @@ input[type="range"] {
   flex: 0 0 auto;
 }
 
-.home-news-rail span {
+.home-news-rail span.gradient-text {
   color: #8b5cf6;
   background: linear-gradient(90deg, #a22b86, #186aa8);
   -webkit-background-clip: text;
@@ -690,16 +690,21 @@ input[type="range"] {
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0;
+  margin-right: 8px;
+}
+
+.home-news-text-container {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  display: block;
 }
 
 @media (max-width: 768px) {
   .home-news-rail {
     padding-left: 10px;
-    padding-right: 25px;
-  }
-
-  .home-news-rail span {
-    display: none;
+    padding-right: 10px;
   }
 }
 

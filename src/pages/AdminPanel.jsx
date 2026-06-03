@@ -5,6 +5,7 @@ import { API_URL } from '../config';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { translations } from '../utils/translations';
+import EmojiPicker from 'emoji-picker-react';
 
 function AdminPanel() {
   const navigate = useNavigate();
@@ -30,6 +31,13 @@ function AdminPanel() {
   // Estados para campañas/anuncios
   const [campaigns, setCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(false);
+
+  // Estados para Simple Announcements
+  const [simpleAnnouncements, setSimpleAnnouncements] = useState([]);
+  const [saForm, setSaForm] = useState({ text_en: '', text_es: '', text_zh: '', emoji_en: '🔥', emoji_es: '🔥', emoji_zh: '🔥', isActive: true });
+  const [saLoading, setSaLoading] = useState(false);
+  const [activeEmojiPicker, setActiveEmojiPicker] = useState(null); // 'en', 'es', or 'zh'
+
 
   // 1. Barrera de Seguridad (Frontend)
   useEffect(() => {
@@ -175,8 +183,69 @@ function AdminPanel() {
   useEffect(() => {
     if (activeTab === 'announcements') {
       loadCampaigns();
+    } else if (activeTab === 'simple_announcements') {
+      loadSimpleAnnouncements();
     }
   }, [activeTab]);
+
+  const loadSimpleAnnouncements = async () => {
+    setSaLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/announcements`);
+      setSimpleAnnouncements(res.data);
+    } catch (err) {
+      console.error('Error loading simple announcements:', err);
+    } finally {
+      setSaLoading(false);
+    }
+  };
+
+  const handleCreateSA = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(`${API_URL}/announcements`, saForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSimpleAnnouncements([res.data, ...simpleAnnouncements]);
+      setSaForm({ text_en: '', text_es: '', text_zh: '', emoji_en: '🔥', emoji_es: '🔥', emoji_zh: '🔥', isActive: true });
+      setMessage('Announcement created successfully.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error creating announcement');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleToggleSAStatus = async (id, currentStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const announcement = simpleAnnouncements.find(a => a.id === id);
+      const res = await axios.put(`${API_URL}/announcements/${id}`, { ...announcement, isActive: !currentStatus }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSimpleAnnouncements(simpleAnnouncements.map(a => a.id === id ? res.data : a));
+    } catch (err) {
+      setError('Error updating announcement status');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleDeleteSA = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this announcement?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/announcements/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSimpleAnnouncements(simpleAnnouncements.filter(a => a.id !== id));
+      setMessage('Announcement deleted.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Error deleting announcement');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
 
   // 7. Cambiar estado de una campaña
   const handleToggleCampaignStatus = async (campaignId, currentStatus) => {
@@ -258,13 +327,20 @@ function AdminPanel() {
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 4v16"/>
-                  <path d="M3 8l4-4 4 4"/>
-                  <path d="M7 4v16"/>
-                  <path d="M15 20l4-4 4 4"/>
-                  <path d="M19 20V4"/>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
-                {ap.announcementsTab || 'Announcements and Campaigns'}
+                {ap.campaignsTab || 'Campaigns'}
+              </button>
+              <button 
+                className={`btn ${activeTab === 'simple_announcements' ? 'primary' : ''}`} 
+                onClick={() => setActiveTab('simple_announcements')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                {ap.announcementsTab || '1-Line Announcements'}
               </button>
             </div>
 
@@ -504,6 +580,139 @@ function AdminPanel() {
                             onClick={() => handleDeleteCampaign(campaign.id)}
                           >
                             {ap.delete || 'Delete'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ========== TAB: SIMPLE ANNOUNCEMENTS ========== */}
+            {activeTab === 'simple_announcements' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <p className="muted" style={{ margin: 0, fontSize: '14px' }}>
+                    Create short announcements to be displayed on the Home page news rail.
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--line)', padding: '20px', marginBottom: '24px' }}>
+                  <h3 style={{ marginTop: 0 }}>Create Announcement</h3>
+                  <form onSubmit={handleCreateSA} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {['en', 'es', 'zh'].map((langKey) => (
+                      <div key={langKey} style={{ display: 'flex', alignItems: 'center', gap: '8px', position: 'relative' }}>
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          style={{ padding: '8px', fontSize: '18px' }}
+                          onClick={() => setActiveEmojiPicker(activeEmojiPicker === langKey ? null : langKey)}
+                        >
+                          {saForm[`emoji_${langKey}`] || '🔥'}
+                        </button>
+                        <input 
+                          type="text" 
+                          placeholder={`${langKey === 'en' ? 'English' : langKey === 'es' ? 'Spanish' : 'Chinese'} text (max 200 chars)`} 
+                          maxLength={200}
+                          value={saForm[`text_${langKey}`]} 
+                          onChange={(e) => setSaForm({...saForm, [`text_${langKey}`]: e.target.value})} 
+                          required 
+                          className="input"
+                          style={{ flex: 1 }}
+                        />
+                        {activeEmojiPicker === langKey && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10 }}>
+                            <EmojiPicker 
+                              onEmojiClick={(emojiData) => {
+                                setSaForm({...saForm, [`emoji_${langKey}`]: emojiData.emoji});
+                                setActiveEmojiPicker(null);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={saForm.isActive} 
+                        onChange={(e) => setSaForm({...saForm, isActive: e.target.checked})} 
+                      />
+                      <span>Active</span>
+                    </label>
+                    <button type="submit" className="btn primary" style={{ alignSelf: 'flex-start' }}>
+                      Create
+                    </button>
+                  </form>
+                </div>
+
+                {saLoading ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <span className="muted">Loading...</span>
+                  </div>
+                ) : simpleAnnouncements.length === 0 ? (
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--line)', padding: '40px', textAlign: 'center' }}>
+                    <span className="muted">No announcements created.</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {simpleAnnouncements.map((announcement) => (
+                      <div key={announcement.id} style={{ 
+                        background: 'rgba(0,0,0,0.2)', 
+                        borderRadius: '16px', 
+                        border: '1px solid var(--line)', 
+                        padding: '20px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '16px'
+                      }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600 }}>EN: {announcement.text_en} {announcement.emoji_en}</p>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '14px' }}>ES: {announcement.text_es} {announcement.emoji_es}</p>
+                          <p style={{ margin: '0 0 4px 0', fontSize: '14px' }}>ZH: {announcement.text_zh} {announcement.emoji_zh}</p>
+                          <div style={{ marginTop: '8px' }}>
+                            <span style={{ 
+                              padding: '3px 8px', 
+                              borderRadius: '6px', 
+                              fontSize: '11px', 
+                              fontWeight: 600,
+                              background: announcement.isActive ? 'rgba(70, 230, 165, 0.15)' : 'rgba(255, 77, 109, 0.15)',
+                              color: announcement.isActive ? 'var(--good)' : 'var(--bad)',
+                              border: announcement.isActive ? '1px solid rgba(70, 230, 165, 0.3)' : '1px solid rgba(255, 77, 109, 0.3)'
+                            }}>
+                              {announcement.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn"
+                            style={{ 
+                              padding: '8px 14px', 
+                              fontSize: '12px',
+                              background: announcement.isActive ? 'rgba(255, 77, 109, 0.15)' : 'rgba(70, 230, 165, 0.15)',
+                              color: announcement.isActive ? 'var(--bad)' : 'var(--good)',
+                              border: announcement.isActive ? '1px solid rgba(255, 77, 109, 0.3)' : '1px solid rgba(70, 230, 165, 0.3)'
+                            }}
+                            onClick={() => handleToggleSAStatus(announcement.id, announcement.isActive)}
+                          >
+                            {announcement.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            className="btn"
+                            style={{ 
+                              padding: '8px 14px', 
+                              fontSize: '12px',
+                              background: 'rgba(255, 77, 109, 0.1)',
+                              color: 'var(--bad)',
+                              border: '1px solid rgba(255, 77, 109, 0.2)'
+                            }}
+                            onClick={() => handleDeleteSA(announcement.id)}
+                          >
+                            Delete
                           </button>
                         </div>
                       </div>

@@ -7,6 +7,7 @@ import ShareModal from '../components/ShareModal';
 import { translations } from '../utils/translations';
 import { API_URL } from '../config';
 import { getVideoUrl, getThumbnailUrl, getMediaUrl } from '../utils/mediaUtils';
+import Marquee from 'react-fast-marquee';
 
 const ROTATE_MS = 6000;
 const BANNER_ROTATE_MS = 5000; // Banner carousel rotation time
@@ -57,6 +58,10 @@ function Home() {
   const timerRef = useRef(null);
   const progressRef = useRef(null);
   const videoRailRef = useRef(null);
+  
+  // Simple Announcements
+  const [simpleAnnouncements, setSimpleAnnouncements] = useState([]);
+
 
   // Banner carousel state
   const [activeCampaigns, setActiveCampaigns] = useState([]);
@@ -90,6 +95,12 @@ function Home() {
   // Load campaigns for banner carousel and announcements
   useEffect(() => {
     loadCampaignAnnouncements();
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/announcements/active`)
+      .then(res => setSimpleAnnouncements(res.data))
+      .catch(err => console.error('Error loading announcements:', err));
   }, []);
 
   useEffect(() => {
@@ -575,8 +586,25 @@ function Home() {
           </section>
 
           <section className="home-news-rail" aria-label="News and Highlights">
-            <img src="/img/icons/icon_news.png" alt="" aria-hidden="true" />
-            <span>News and Highlights</span>
+            <img src="/img/icons/icon_news.png" alt="" aria-hidden="true" style={{ flexShrink: 0, zIndex: 2 }} />
+            <div className="home-news-text-container" style={{ width: '100%' }}>
+              {simpleAnnouncements.length > 0 ? (
+                <Marquee speed={30} gradient={false} pauseOnHover={true}>
+                  {simpleAnnouncements.map((ann, idx) => {
+                    const text = lang === 'es' ? ann.text_es : lang === 'zh' ? ann.text_zh : ann.text_en;
+                    const emoji = lang === 'es' ? ann.emoji_es : lang === 'zh' ? ann.emoji_zh : ann.emoji_en;
+                    return (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', marginRight: '50px' }}>
+                        <span className="gradient-text">{text}</span>
+                        <span style={{ fontSize: '14px', marginLeft: '6px' }}>{emoji || '🔥'}</span>
+                      </div>
+                    );
+                  })}
+                </Marquee>
+              ) : (
+                <span className="gradient-text">News and Highlights</span>
+              )}
+            </div>
           </section>
 
           <section className="home-feature-blockers" aria-label="Hurammy categories">
