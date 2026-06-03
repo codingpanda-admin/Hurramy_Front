@@ -499,8 +499,13 @@ function Home() {
 
   const scrollVideoRail = (direction) => {
     if (!videoRailRef.current) return;
-    const amount = videoRailRef.current.clientWidth * 0.82;
-    videoRailRef.current.scrollBy({
+    const rail = videoRailRef.current;
+    const firstCard = rail.querySelector('.home-video-rail-card');
+    let amount = rail.clientWidth * 0.82;
+    if (firstCard) {
+      amount = firstCard.getBoundingClientRect().width + 14;
+    }
+    rail.scrollBy({
       left: direction * amount,
       behavior: 'smooth'
     });
