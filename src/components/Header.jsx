@@ -916,6 +916,30 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
             </button>
             <span>Click this button for instructions on the homepage.</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            <Link
+              to="/login"
+              className="btn primary"
+              onClick={handleCloseInstructions}
+              style={{ flex: '0 0 auto', padding: '8px 16px', fontSize: '13px' }}
+            >
+              {t.header.login}
+            </Link>
+            <span>Click this button to login, upload videos, and join campaigns!</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            <Link
+              to="/upload"
+              className="iconBtn header-lang-btn"
+              onClick={handleCloseInstructions}
+              aria-label={t.header.upload}
+              title={t.header.upload}
+              style={{ flex: '0 0 auto' }}
+            >
+              {IconPlus}
+            </Link>
+            <span>Click this button to upload videos. Note: You can only upload videos after logging in.</span>
+          </div>
           <button className="btn primary" onClick={handleCloseInstructions} style={{ justifySelf: 'end' }}>
             Close
           </button>

@@ -524,7 +524,7 @@ function Home() {
   const handleHelpSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${API_URL}/support`, {
+      await axios.post(`${API_URL}/support`, {
         email: helpForm.email,
         subject: helpForm.subject,
         message: helpForm.message
@@ -533,11 +533,11 @@ function Home() {
       setHelpCenterOpen(false);
       setSuccessAlert({
         show: true,
-        message: response.data?.message || 'Support request sent successfully!'
+        message: t.helpCenter?.successMessage || 'Your support request has been sent successfully. We will contact you by email.'
       });
     } catch (error) {
       console.error('Error submitting help request:', error);
-      showToast(error.response?.data?.message || 'Error sending support request.');
+      showToast(t.helpCenter?.errorMessage || error.response?.data?.message || 'Error sending support request.');
     }
   };
 
@@ -577,7 +577,7 @@ function Home() {
             <img src="/img/background_home0.png" alt="" aria-hidden="true" />
             <div className="home-banner-hud" aria-live="polite">
               {activeCampaigns.length === 0 ? (
-                <p className="home-banner-hud-empty">No active campaigns at the moment.</p>
+                <p className="home-banner-hud-empty">{t.campaigns?.noCampaigns || 'No active campaigns at the moment.'}</p>
               ) : (() => {
                 const campaign = activeCampaigns[hudCampaignIdx % activeCampaigns.length];
                 const daysLeft = getDaysLeft(campaign.endDate);
@@ -646,52 +646,52 @@ function Home() {
             <div className="home-feature-blocker home-feature-karaoke">
               <button type="button" className="home-feature-live-btn">
                 <span className="home-feature-live-indicator" aria-hidden="true" />
-                <span>live</span>
+                <span>{t.featureBlocks?.live || 'live'}</span>
               </button>
               <div className="home-feature-karaoke-panel">
-                <div className="home-feature-panel-header">Karaoke Contest</div>
+                <div className="home-feature-panel-header">{t.featureBlocks?.karaokeTitle || 'Karaoke Contest'}</div>
                 <div className="home-feature-karaoke-copy">
-                  <strong>Voice of Washington</strong>
-                  <Link to="/campaigns" className="home-feature-karaoke-btn">Join Now</Link>
+                  <strong>{t.featureBlocks?.karaokeCopy || 'Voice of Washington'}</strong>
+                  <Link to="/campaigns" className="home-feature-karaoke-btn">{t.featureBlocks?.joinNow || 'Join Now'}</Link>
                 </div>
               </div>
             </div>
             <div className="home-feature-blocker home-feature-script">
               <button type="button" className="home-feature-live-btn">
                 <span className="home-feature-live-indicator" aria-hidden="true" />
-                <span>live</span>
+                <span>{t.featureBlocks?.live || 'live'}</span>
               </button>
               <div className="home-feature-info-panel">
-                <div className="home-feature-panel-header">Script Contest</div>
+                <div className="home-feature-panel-header">{t.featureBlocks?.scriptTitle || 'Script Contest'}</div>
                 <div className="home-feature-script-copy">
-                  <strong>Short Drama Script Context</strong>
-                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Submit Now</button>
+                  <strong>{t.featureBlocks?.scriptCopy || 'Short Drama Script Contest'}</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>{t.featureBlocks?.submitNow || 'Submit Now'}</button>
                 </div>
               </div>
             </div>
             <div className="home-feature-blocker home-feature-short-drama">
               <button type="button" className="home-feature-live-btn">
                 <span className="home-feature-live-indicator" aria-hidden="true" />
-                <span>live</span>
+                <span>{t.featureBlocks?.live || 'live'}</span>
               </button>
               <div className="home-feature-info-panel">
-                <div className="home-feature-panel-header">Short Dramas</div>
+                <div className="home-feature-panel-header">{t.featureBlocks?.shortDramaTitle || 'Short Dramas'}</div>
                 <div className="home-feature-script-copy">
-                  <strong>Short Drama</strong>
-                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
+                  <strong>{t.featureBlocks?.shortDramaCopy || 'Short Drama'}</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>{t.featureBlocks?.joinNow || 'Join Now'}</button>
                 </div>
               </div>
             </div>
             <div className="home-feature-blocker home-feature-community">
               <button type="button" className="home-feature-live-btn">
                 <span className="home-feature-live-indicator" aria-hidden="true" />
-                <span>live</span>
+                <span>{t.featureBlocks?.live || 'live'}</span>
               </button>
               <div className="home-feature-info-panel">
-                <div className="home-feature-panel-header">Community</div>
+                <div className="home-feature-panel-header">{t.featureBlocks?.communityTitle || 'Community'}</div>
                 <div className="home-feature-script-copy">
-                  <strong>Community</strong>
-                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>Join Now</button>
+                  <strong>{t.featureBlocks?.communityCopy || 'Community'}</strong>
+                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>{t.featureBlocks?.joinNow || 'Join Now'}</button>
                 </div>
               </div>
             </div>
@@ -1256,15 +1256,15 @@ function Home() {
                 <div className="home-footer-link-group">
                   <img src="/logo_hurammy.png" alt="Hurammy" />
                   <nav aria-label="Footer links">
-                    <Link to="/about">About Us</Link>
-                    <Link to="/terms">Terms of Service</Link>
-                    <Link to="/privacy">Privacy Policy</Link>
+                    <Link to="/about">{t.footer?.aboutUs || 'About Us'}</Link>
+                    <Link to="/terms">{t.footer?.termsOfService || 'Terms of Service'}</Link>
+                    <Link to="/privacy">{t.footer?.privacyPolicy || 'Privacy Policy'}</Link>
                     <button
                       type="button"
                       onClick={openHelpCenter}
                       style={{ background: 'none', border: 0, padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}
                     >
-                      Help Center
+                      {t.footer?.helpCenter || 'Help Center'}
                     </button>
                   </nav>
                 </div>
@@ -1314,12 +1314,12 @@ function Home() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <h2 id="help-center-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
-                Help Center
+                {t.footer?.helpCenter || 'Help Center'}
               </h2>
             </div>
 
             <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
-              Email
+              {t.helpCenter?.email || 'Email'}
               <input
                 className="input"
                 type="email"
@@ -1330,7 +1330,7 @@ function Home() {
             </label>
 
             <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
-              Subject
+              {t.helpCenter?.subject || 'Subject'}
               <input
                 className="input"
                 type="text"
@@ -1341,7 +1341,7 @@ function Home() {
             </label>
 
             <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
-              Message
+              {t.helpCenter?.message || 'Message'}
               <textarea
                 className="input"
                 value={helpForm.message}
@@ -1354,10 +1354,10 @@ function Home() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', flexWrap: 'wrap' }}>
               <button type="button" className="btn" onClick={() => setHelpCenterOpen(false)}>
-                Cancel
+                {t.helpCenter?.cancel || 'Cancel'}
               </button>
               <button type="submit" className="btn primary">
-                Submit
+                {t.helpCenter?.submit || 'Submit'}
               </button>
             </div>
           </form>
@@ -1450,14 +1450,14 @@ function Home() {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h2 className="custom-success-alert-title">¡Enviado con éxito!</h2>
+            <h2 className="custom-success-alert-title">{t.helpCenter?.successTitle || 'Sent successfully!'}</h2>
             <p className="custom-success-alert-message">{successAlert.message}</p>
             <button 
               type="button" 
               className="custom-success-alert-btn" 
               onClick={() => setSuccessAlert({ show: false, message: '' })}
             >
-              Entendido
+              {t.helpCenter?.ok || 'OK'}
             </button>
           </div>
         </div>
