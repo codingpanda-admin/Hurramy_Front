@@ -205,6 +205,12 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     setInstructionsOpen(false);
   };
 
+  const handleOpenLanguageFromInstructions = () => {
+    localStorage.setItem('homeInstructionsSeen', 'true');
+    setInstructionsOpen(false);
+    setLangOpen(true);
+  };
+
   const handleLogout = () => {
     setUserMenuOpen(false);
     localStorage.removeItem('user');
@@ -537,7 +543,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
 
           {location.pathname === '/' && (
             <button
-              className="iconBtn"
+              className="iconBtn header-lang-btn"
               onClick={() => setInstructionsOpen(true)}
               aria-label="Instructions"
               title="Instructions"
@@ -880,12 +886,35 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
             <h2 id="site-instructions-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
               Instructions
             </h2>
-            <button className="iconBtn" onClick={handleCloseInstructions} aria-label="Close instructions" title="Close">
-              ×
-            </button>
           </div>
           <div style={{ color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
             Website navigation instructions will appear here.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            <button
+              type="button"
+              className="iconBtn header-lang-btn"
+              onClick={handleOpenLanguageFromInstructions}
+              aria-label="Change language"
+              title="Change language"
+              style={{ flex: '0 0 auto' }}
+            >
+              {IconGlobe}
+            </button>
+            <span>Click this button to select your preferred language.</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            <button
+              type="button"
+              className="iconBtn header-lang-btn"
+              onClick={() => setInstructionsOpen(true)}
+              aria-label="Instructions"
+              title="Instructions"
+              style={{ flex: '0 0 auto' }}
+            >
+              {IconInstructions}
+            </button>
+            <span>Click this button for instructions on the homepage.</span>
           </div>
           <button className="btn primary" onClick={handleCloseInstructions} style={{ justifySelf: 'end' }}>
             Close

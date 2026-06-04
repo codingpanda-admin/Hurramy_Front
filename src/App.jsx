@@ -15,6 +15,8 @@ import Following from './pages/Following';
 import Favorites from './pages/Favorites';
 import Trending from './pages/Trending';
 import AdminPanel from './pages/AdminPanel';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import AIGeneratorPage from './pages/AIGeneratorPage'; // <-- 1. IMPORTA LA PÁGINA
 
 function App() {
@@ -36,6 +38,8 @@ function App() {
       <Route path="/favorites" element={<Favorites />} />
       <Route path="/trending" element={<Trending />} />
       <Route path="/admin" element={<AdminPanel />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/ai-generator" element={<AIGeneratorPage />} /> {/* <-- 2. AGREGA LA RUTA */}
     </Routes>
   );

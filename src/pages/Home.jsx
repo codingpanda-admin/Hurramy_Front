@@ -1316,9 +1316,6 @@ function Home() {
               <h2 id="help-center-title" style={{ margin: 0, fontSize: '18px', fontWeight: 800 }}>
                 Help Center
               </h2>
-              <button type="button" className="iconBtn" onClick={() => setHelpCenterOpen(false)} aria-label="Close Help Center" title="Close">
-                ×
-              </button>
             </div>
 
             <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: 'rgba(234,240,255,0.82)' }}>
@@ -1388,17 +1385,6 @@ function Home() {
           <div className="major_announcement_modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="major-announcement-title">
             <div className="major_announcement_modal_header">
               <h2 id="major-announcement-title">Instructions</h2>
-              <button
-                type="button"
-                className="major_announcement_modal_close"
-                onClick={() => setInstructionsOpen(false)}
-                aria-label="Close instructions"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
             </div>
             <div className="major_announcement_modal_body">
               <h3>大专联首届“华府系列挑战赛”暨“华莱美（Hurammy）大奖赛”年度选拔赛实施细则</h3>
