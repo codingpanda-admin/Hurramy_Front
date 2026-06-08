@@ -315,6 +315,11 @@ function Upload() {
 
   // --- Cancel handler ---
   const handleCancel = () => {
+    if (!isUploading) {
+      navigate('/');
+      return;
+    }
+
     if (xhrRef.current) {
       xhrRef.current.abort();
       xhrRef.current = null;
@@ -573,7 +578,6 @@ function Upload() {
                 className="btn"
                 type="button"
                 onClick={handleCancel}
-                disabled={!isUploading}
               >
                 {u.cancel || 'Cancel'}
               </button>

@@ -9,7 +9,6 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [langOpen, setLangOpen] = useState(false);
   const [instructionsOpen, setInstructionsOpen] = useState(false);
-  const [instructionsAutoOpened, setInstructionsAutoOpened] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileSearchVisible, setMobileSearchVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,6 +28,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
   const lastScrollY = useRef(0);
 
   const t = translations[currentLang] || translations.en;
+  const showInstructionsCue = location.pathname === '/' && localStorage.getItem('homeInstructionsSeen') !== 'true';
   const navItems = [
     { to: '/', label: t.sidebar?.home || 'Home' },
     { to: '/trending', label: t.sidebar?.trending || 'Trending' },
@@ -192,13 +192,6 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
   useEffect(() => {
     localStorage.setItem('appLanguage', currentLang);
   }, [currentLang]);
-
-  useEffect(() => {
-    if (location.pathname !== '/' || instructionsAutoOpened) return;
-    if (localStorage.getItem('homeInstructionsSeen') === 'true') return;
-    setInstructionsOpen(true);
-    setInstructionsAutoOpened(true);
-  }, [location.pathname, instructionsAutoOpened]);
 
   const handleCloseInstructions = () => {
     localStorage.setItem('homeInstructionsSeen', 'true');
@@ -543,12 +536,17 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
 
           {location.pathname === '/' && (
             <button
-              className="iconBtn header-lang-btn"
+              className={`iconBtn header-lang-btn${showInstructionsCue ? ' header-instructions-first-visit' : ''}`}
               onClick={() => setInstructionsOpen(true)}
               aria-label="Instructions"
               title="Instructions"
             >
               {IconInstructions}
+              {showInstructionsCue && (
+                <span className="header-instructions-cue" aria-hidden="true">
+                  Click here for instructions
+                </span>
+              )}
             </button>
           )}
 
