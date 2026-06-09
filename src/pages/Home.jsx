@@ -678,7 +678,7 @@ function Home() {
                 <div className="home-feature-panel-header">{t.featureBlocks?.shortDramaTitle || 'Short Dramas'}</div>
                 <div className="home-feature-script-copy">
                   <strong>{t.featureBlocks?.shortDramaCopy || 'Short Drama'}</strong>
-                  <button type="button" className="home-feature-script-btn" onClick={() => setConstructionPopupOpen(true)}>{t.featureBlocks?.joinNow || 'Join Now'}</button>
+                  <Link to="/short-dramas" className="home-feature-script-btn">{t.featureBlocks?.watchNow || 'Watch Now'}</Link>
                 </div>
               </div>
             </div>
@@ -1240,6 +1240,7 @@ function Home() {
           <footer className="home-footer">
             <div className="home-footer-inner">
               <div className="home-footer-brand">
+                <img src="/img/sponsors/sponsor_1_stellarxr.jpg" alt="StellarXR" loading="lazy" />
               </div>
 
               <div className="panel rp-section rp-ecosystem-block home-footer-scenex">

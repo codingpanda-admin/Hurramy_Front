@@ -175,6 +175,7 @@ export const translations = {
       communityTitle: 'Community',
       communityCopy: 'Community',
       joinNow: 'Join Now',
+      watchNow: 'Watch Now',
       submitNow: 'Submit Now',
     },
     login: {
@@ -770,6 +771,7 @@ systemAnnounce: {
       communityTitle: 'Comunidad',
       communityCopy: 'Comunidad',
       joinNow: 'Unirse ahora',
+      watchNow: 'Ver ahora',
       submitNow: 'Enviar ahora',
     },
     login: {
@@ -1366,6 +1368,7 @@ systemAnnounce: {
       communityTitle: '社区',
       communityCopy: '社区',
       joinNow: '立即加入',
+      watchNow: '立即观看',
       submitNow: '立即提交',
     },
     login: {

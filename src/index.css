@@ -1054,6 +1054,67 @@ input[type="range"] {
     inset 0 1px 0 rgba(255,255,255,0.34);
 }
 
+.short-dramas-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(5,8,22,0.57), rgba(5,8,22,0.69)),
+    url('/img/background_short_drama.png') center top / cover fixed no-repeat,
+    var(--bg);
+}
+
+.short-dramas-main {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 96px 0 48px;
+}
+
+.short-dramas-frame {
+  margin-bottom: 28px;
+  padding: 22px;
+  border: 1px solid rgba(107, 211, 255, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 88, 211, 0.2), rgba(48, 200, 255, 0.16)),
+    rgba(8, 14, 35, 0.58);
+  box-shadow:
+    0 18px 50px rgba(0,0,0,0.24),
+    inset 0 1px 0 rgba(255,255,255,0.12);
+}
+
+.short-dramas-main h1 {
+  margin: 0 0 24px;
+  color: rgba(234,240,255,0.96);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.short-dramas-character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 18px;
+  margin: 0;
+}
+
+.short-dramas-character-card {
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(234,240,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+}
+
+.short-dramas-character-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.short-dramas-home-link {
+  text-decoration: none;
+}
+
 .home-construction-popup-overlay {
   position: fixed;
   inset: 0;
@@ -1193,8 +1254,8 @@ input[type="range"] {
     left: 4px;
   }
 
-  .home-video-rail-arrow.next {
-    right: 4px;
+.home-video-rail-arrow.next {
+  right: 4px;
   }
 }
 
@@ -1393,18 +1454,21 @@ input[type="range"] {
   padding: 15px 22px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 28px;
   flex-wrap: wrap;
+  overflow: visible;
 }
 
 .home-footer-brand img {
   width: auto;
-  max-width: min(220px, 30%);
-  max-height: 43px;
+  max-width: min(275px, 38%);
+  max-height: 54px;
   height: auto;
   object-fit: contain;
   flex: 0 1 auto;
+  transform: scale(1.25);
+  transform-origin: left center;
 }
 
 .home-footer-scenex {
