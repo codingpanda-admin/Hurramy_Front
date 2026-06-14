@@ -16,6 +16,7 @@ const CATEGORIES = [
   'Sports',
   'Education',
   'General',
+  'ShortDrama',
 ];
 
 function fmtMB(bytes) {
