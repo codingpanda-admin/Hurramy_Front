@@ -19,6 +19,7 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ShortDramas from './pages/ShortDramas';
 import AIGeneratorPage from './pages/AIGeneratorPage'; // <-- 1. IMPORTA LA PÁGINA
+import LiveBroadcast from './pages/LiveBroadcast';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/short-dramas" element={<ShortDramas />} />
       <Route path="/ai-generator" element={<AIGeneratorPage />} /> {/* <-- 2. AGREGA LA RUTA */}
+      <Route path="/live" element={<LiveBroadcast />} />
     </Routes>
   );
 }

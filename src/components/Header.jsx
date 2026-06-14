@@ -50,6 +50,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     { to: '/', label: t.sidebar?.home || 'Home' },
     { to: '/trending', label: t.sidebar?.trending || 'Trending' },
     { to: '/campaigns', label: t.sidebar?.campaigns || 'Campaigns' },
+    { to: '/live', label: t.sidebar?.live || 'Live' },
     { to: '/upload', label: t.sidebar?.upload || 'Upload' },
   ];
 

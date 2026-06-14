@@ -38,6 +38,14 @@ function AdminPanel() {
   const [saLoading, setSaLoading] = useState(false);
   const [activeEmojiPicker, setActiveEmojiPicker] = useState(null); // 'en', 'es', or 'zh'
 
+  // Estados para Canales en Vivo
+  const [liveChannels, setLiveChannels] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveForm, setLiveForm] = useState({ name: '', description: '', streamUrl: '', status: 'offline', isFeatured: false, hostEmail: '' });
+  const [liveThumbnail, setLiveThumbnail] = useState(null);
+  const [editingChannelId, setEditingChannelId] = useState(null);
+  const [showLiveForm, setShowLiveForm] = useState(false);
+
 
   // 1. Barrera de Seguridad (Frontend)
   useEffect(() => {
@@ -185,6 +193,8 @@ function AdminPanel() {
       loadCampaigns();
     } else if (activeTab === 'simple_announcements') {
       loadSimpleAnnouncements();
+    } else if (activeTab === 'live_channels') {
+      loadLiveChannels();
     }
   }, [activeTab]);
 
@@ -289,6 +299,136 @@ function AdminPanel() {
     }
   };
 
+  // --- Canales en Vivo ---
+  const loadLiveChannels = async () => {
+    setLiveLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/live`);
+      setLiveChannels(res.data || []);
+    } catch (err) {
+      console.error('Error loading live channels:', err);
+      setError('Error loading live channels.');
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  const handleCreateOrUpdateLiveChannel = async (e) => {
+    e.preventDefault();
+    setLiveLoading(true);
+    setError('');
+    setMessage('');
+
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('name', liveForm.name);
+    formData.append('description', liveForm.description);
+    formData.append('streamUrl', liveForm.streamUrl);
+    formData.append('status', liveForm.status);
+    formData.append('isFeatured', liveForm.isFeatured);
+
+    if (liveForm.hostEmail) {
+      // Buscar usuario por email para asociar su hostId
+      try {
+        const res = await axios.get(`${API_URL}/admin/users/search?email=${liveForm.hostEmail}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.data && res.data.length > 0) {
+          formData.append('hostId', res.data[0].id);
+        } else {
+          setError('Host email not found. Defaulting host to current admin.');
+          setTimeout(() => setError(''), 3000);
+        }
+      } catch (err) {
+        console.error('Error searching host email:', err);
+      }
+    }
+
+    if (liveThumbnail) {
+      formData.append('thumbnail', liveThumbnail);
+    }
+
+    try {
+      let res;
+      if (editingChannelId) {
+        res = await axios.put(`${API_URL}/live/${editingChannelId}`, formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        setLiveChannels(liveChannels.map(c => c.id === editingChannelId ? res.data : c));
+        setMessage('Live channel updated successfully.');
+      } else {
+        res = await axios.post(`${API_URL}/live`, formData, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        setLiveChannels([res.data, ...liveChannels]);
+        setMessage('Live channel created successfully.');
+      }
+
+      setLiveForm({ name: '', description: '', streamUrl: '', status: 'offline', isFeatured: false, hostEmail: '' });
+      setLiveThumbnail(null);
+      setEditingChannelId(null);
+      setShowLiveForm(false);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error saving live channel.');
+      setTimeout(() => setError(''), 3000);
+    } finally {
+      setLiveLoading(false);
+    }
+  };
+
+  const handleToggleLiveStatus = async (id, currentStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const newStatus = currentStatus === 'live' ? 'offline' : 'live';
+      await axios.put(`${API_URL}/live/${id}/status`, { status: newStatus }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLiveChannels(liveChannels.map(c => c.id === id ? { ...c, status: newStatus } : c));
+      setMessage(`Channel status updated to ${newStatus}.`);
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Error updating channel status.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleDeleteLiveChannel = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this live channel?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_URL}/live/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLiveChannels(liveChannels.filter(c => c.id !== id));
+      setMessage('Live channel deleted.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      setError('Error deleting live channel.');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const startEditingChannel = (channel) => {
+    setEditingChannelId(channel.id);
+    setLiveForm({
+      name: channel.name,
+      description: channel.description || '',
+      streamUrl: channel.streamUrl || '',
+      status: channel.status || 'offline',
+      isFeatured: channel.isFeatured || false,
+      hostEmail: channel.host?.email || ''
+    });
+    setLiveThumbnail(null);
+    setShowLiveForm(true);
+  };
+
   if (!currentUser) return null; // Evita parpadeos de UI antes de expulsar
 
   return (
@@ -341,6 +481,17 @@ function AdminPanel() {
                   <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                 </svg>
                 {ap.announcementsTab || '1-Line Announcements'}
+              </button>
+              <button 
+                className={`btn ${activeTab === 'live_channels' ? 'primary' : ''}`} 
+                onClick={() => setActiveTab('live_channels')}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/>
+                  <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/>
+                </svg>
+                {lang === 'es' ? 'Canales en Vivo' : 'Live Channels'}
               </button>
             </div>
 
@@ -713,6 +864,253 @@ function AdminPanel() {
                             onClick={() => handleDeleteSA(announcement.id)}
                           >
                             Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* ========== TAB: CANALES EN VIVO (LIVE CHANNELS) ========== */}
+            {activeTab === 'live_channels' && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <p className="muted" style={{ margin: 0, fontSize: '14px' }}>
+                    {lang === 'es' ? 'Administra los canales de transmisión en vivo y sus URLs HLS.' : 'Manage live streaming channels and HLS URLs.'}
+                  </p>
+                  <button 
+                    className="btn primary" 
+                    onClick={() => {
+                      setShowLiveForm(!showLiveForm);
+                      if (!showLiveForm) {
+                        setEditingChannelId(null);
+                        setLiveForm({ name: '', description: '', streamUrl: '', status: 'offline', isFeatured: false, hostEmail: '' });
+                        setLiveThumbnail(null);
+                      }
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="12" y1="5" x2="12" y2="19"/>
+                      <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    {showLiveForm ? (lang === 'es' ? 'Cerrar Formulario' : 'Close Form') : (lang === 'es' ? 'Nuevo Canal' : 'New Live Channel')}
+                  </button>
+                </div>
+
+                {/* Formulario de Crear / Editar */}
+                {showLiveForm && (
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--line)', padding: '24px', marginBottom: '24px' }}>
+                    <h3 style={{ marginTop: 0, marginBottom: '16px' }}>
+                      {editingChannelId ? (lang === 'es' ? 'Editar Canal' : 'Edit Channel') : (lang === 'es' ? 'Crear Nuevo Canal en Vivo' : 'Create New Live Channel')}
+                    </h3>
+                    <form onSubmit={handleCreateOrUpdateLiveChannel} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'Nombre del Canal *' : 'Channel Name *'}</label>
+                          <input 
+                            type="text" 
+                            className="input" 
+                            placeholder="e.g. ESL Pro League"
+                            value={liveForm.name}
+                            onChange={(e) => setLiveForm({ ...liveForm, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'Correo del Creador (Opcional)' : 'Host Email (Optional)'}</label>
+                          <input 
+                            type="email" 
+                            className="input" 
+                            placeholder="e.g. streamer@gmail.com"
+                            value={liveForm.hostEmail}
+                            onChange={(e) => setLiveForm({ ...liveForm, hostEmail: e.target.value })}
+                          />
+                          <span className="muted" style={{ fontSize: '11px' }}>{lang === 'es' ? 'Si se deja vacío, tú serás el creador.' : 'If left empty, you will be the host.'}</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'Descripción' : 'Description'}</label>
+                        <textarea 
+                          className="input" 
+                          rows="3"
+                          placeholder={lang === 'es' ? 'Escribe algo sobre la transmisión...' : 'Write about the broadcast...'}
+                          value={liveForm.description}
+                          onChange={(e) => setLiveForm({ ...liveForm, description: e.target.value })}
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'URL de Reproducción HLS (.m3u8) *' : 'HLS Stream URL (.m3u8) *'}</label>
+                          <input 
+                            type="url" 
+                            className="input" 
+                            placeholder="https://example.com/live/playlist.m3u8"
+                            value={liveForm.streamUrl}
+                            onChange={(e) => setLiveForm({ ...liveForm, streamUrl: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'Estado Inicial' : 'Initial Status'}</label>
+                          <select 
+                            className="input"
+                            value={liveForm.status}
+                            onChange={(e) => setLiveForm({ ...liveForm, status: e.target.value })}
+                          >
+                            <option value="offline">Offline</option>
+                            <option value="live">Live</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'center' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{lang === 'es' ? 'Miniatura (Opcional)' : 'Thumbnail (Optional)'}</label>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            className="input"
+                            style={{ padding: '8px' }}
+                            onChange={(e) => setLiveThumbnail(e.target.files[0])}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '20px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+                            <input 
+                              type="checkbox"
+                              checked={liveForm.isFeatured}
+                              onChange={(e) => setLiveForm({ ...liveForm, isFeatured: e.target.checked })}
+                            />
+                            <span>{lang === 'es' ? 'Destacar en Inicio' : 'Feature on Homepage'}</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                        <button type="submit" className="btn primary" disabled={liveLoading}>
+                          {liveLoading ? (lang === 'es' ? 'Guardando...' : 'Saving...') : (editingChannelId ? (lang === 'es' ? 'Guardar Cambios' : 'Save Changes') : (lang === 'es' ? 'Crear Canal' : 'Create Channel'))}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          onClick={() => {
+                            setShowLiveForm(false);
+                            setEditingChannelId(null);
+                            setLiveForm({ name: '', description: '', streamUrl: '', status: 'offline', isFeatured: false, hostEmail: '' });
+                            setLiveThumbnail(null);
+                          }}
+                        >
+                          {lang === 'es' ? 'Cancelar' : 'Cancel'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* Lista de Canales */}
+                {liveLoading && liveChannels.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <span className="muted">{lang === 'es' ? 'Cargando canales...' : 'Loading channels...'}</span>
+                  </div>
+                ) : liveChannels.length === 0 ? (
+                  <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid var(--line)', padding: '40px', textAlign: 'center' }}>
+                    <span className="muted">{lang === 'es' ? 'No hay canales de transmisión creados.' : 'No live channels created yet.'}</span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {liveChannels.map((channel) => (
+                      <div key={channel.id} style={{ 
+                        background: 'rgba(0,0,0,0.2)', 
+                        borderRadius: '16px', 
+                        border: '1px solid var(--line)', 
+                        padding: '16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '16px'
+                      }}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flex: 1, minWidth: '280px' }}>
+                          {/* Miniatura */}
+                          <div style={{ width: '80px', height: '45px', borderRadius: '8px', overflow: 'hidden', background: '#000', border: '1px solid var(--line)', flexShrink: 0 }}>
+                            {channel.thumbnail ? (
+                              <img src={`${API_URL}${channel.thumbnail}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #7209b7, #f72585)', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}>LIVE</div>
+                            )}
+                          </div>
+
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>{channel.name}</h3>
+                              <span style={{ 
+                                padding: '2px 8px', 
+                                borderRadius: '6px', 
+                                fontSize: '10px', 
+                                fontWeight: 600,
+                                background: channel.status === 'live' ? 'rgba(255, 77, 109, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                color: channel.status === 'live' ? 'var(--bad)' : 'var(--muted)',
+                                border: channel.status === 'live' ? '1px solid rgba(255, 77, 109, 0.3)' : '1px solid var(--line)'
+                              }}>
+                                {channel.status === 'live' ? 'LIVE' : 'OFFLINE'}
+                              </span>
+                              {channel.isFeatured && (
+                                <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, background: 'rgba(255, 184, 0, 0.15)', color: '#ffb800', border: '1px solid rgba(255, 184, 0, 0.3)' }}>
+                                  ★ Featured
+                                </span>
+                              )}
+                            </div>
+                            <p className="muted" style={{ margin: '4px 0', fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {channel.description || 'No description'}
+                            </p>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {channel.streamUrl}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+                              Host: @{channel.host?.email.split('@')[0] || 'unknown'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botones de Acción */}
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn"
+                            style={{ 
+                              padding: '6px 12px', 
+                              fontSize: '12px',
+                              background: channel.status === 'live' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 77, 109, 0.15)',
+                              color: channel.status === 'live' ? 'var(--text)' : 'var(--bad)',
+                              border: channel.status === 'live' ? '1px solid var(--line)' : '1px solid rgba(255, 77, 109, 0.3)'
+                            }}
+                            onClick={() => handleToggleLiveStatus(channel.id, channel.status)}
+                          >
+                            {channel.status === 'live' ? (lang === 'es' ? 'Apagar directo' : 'Stop stream') : (lang === 'es' ? 'Transmitir en Vivo' : 'Go Live')}
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            onClick={() => startEditingChannel(channel)}
+                          >
+                            {lang === 'es' ? 'Editar' : 'Edit'}
+                          </button>
+                          <button
+                            className="btn"
+                            style={{ 
+                              padding: '6px 12px', 
+                              fontSize: '12px',
+                              background: 'rgba(255, 77, 109, 0.1)',
+                              color: 'var(--bad)',
+                              border: '1px solid rgba(255, 77, 109, 0.2)'
+                            }}
+                            onClick={() => handleDeleteLiveChannel(channel.id)}
+                          >
+                            {lang === 'es' ? 'Eliminar' : 'Delete'}
                           </button>
                         </div>
                       </div>

@@ -71,6 +71,7 @@ function Home() {
   const [hudCampaignIdx, setHudCampaignIdx] = useState(0);
   const [bannerCampaigns, setBannerCampaigns] = useState([]);
   const [bannerIdx, setBannerIdx] = useState(0);
+  const [liveChannels, setLiveChannels] = useState([]);
   const bannerTimerRef = useRef(null);
   const bannerDragRef = useRef({ startX: 0, isDragging: false });
 
@@ -381,6 +382,12 @@ function Home() {
   }, []);
 
   useEffect(() => {
+    axios.get(`${API_URL}/live?status=live`)
+      .then(res => setLiveChannels(res.data || []))
+      .catch(err => console.error('Error loading live channels:', err));
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       applyFilters(searchQuery);
     }, 0);
@@ -671,10 +678,10 @@ function Home() {
 
           <section className="home-feature-blockers" aria-label="Hurammy categories">
             <div className="home-feature-blocker home-feature-karaoke">
-              <button type="button" className="home-feature-live-btn">
+              <Link to="/live" className="home-feature-live-btn" style={{ textDecoration: 'none' }}>
                 <span className="home-feature-live-indicator" aria-hidden="true" />
                 <span>{t.featureBlocks?.live || 'live'}</span>
-              </button>
+              </Link>
               <div className="home-feature-karaoke-panel">
                 <div className="home-feature-panel-header">{t.featureBlocks?.karaokeTitle || 'Karaoke Contest'}</div>
                 <div className="home-feature-karaoke-copy">
@@ -684,10 +691,10 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-script">
-              <button type="button" className="home-feature-live-btn">
+              <Link to="/live" className="home-feature-live-btn" style={{ textDecoration: 'none' }}>
                 <span className="home-feature-live-indicator" aria-hidden="true" />
                 <span>{t.featureBlocks?.live || 'live'}</span>
-              </button>
+              </Link>
               <div className="home-feature-info-panel">
                 <div className="home-feature-panel-header">{t.featureBlocks?.scriptTitle || 'Script Contest'}</div>
                 <div className="home-feature-script-copy">
@@ -697,10 +704,10 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-short-drama">
-              <button type="button" className="home-feature-live-btn">
+              <Link to="/live" className="home-feature-live-btn" style={{ textDecoration: 'none' }}>
                 <span className="home-feature-live-indicator" aria-hidden="true" />
                 <span>{t.featureBlocks?.live || 'live'}</span>
-              </button>
+              </Link>
               <div className="home-feature-info-panel">
                 <div className="home-feature-panel-header">{t.featureBlocks?.shortDramaTitle || 'Short Dramas'}</div>
                 <div className="home-feature-script-copy">
@@ -710,10 +717,10 @@ function Home() {
               </div>
             </div>
             <div className="home-feature-blocker home-feature-community">
-              <button type="button" className="home-feature-live-btn">
+              <Link to="/live" className="home-feature-live-btn" style={{ textDecoration: 'none' }}>
                 <span className="home-feature-live-indicator" aria-hidden="true" />
                 <span>{t.featureBlocks?.live || 'live'}</span>
-              </button>
+              </Link>
               <div className="home-feature-info-panel">
                 <div className="home-feature-panel-header">{t.featureBlocks?.communityTitle || 'Community'}</div>
                 <div className="home-feature-script-copy">
@@ -808,6 +815,38 @@ function Home() {
               </div>
             </div>
           </section>
+
+          {liveChannels.length > 0 && (
+            <section className="home-live-channels-section" style={{ margin: '0 0 32px 0', padding: '0 20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '20px', fontWeight: 800 }}>
+                  <span className="home-live-pulse-dot" style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: '#ff4d6d' }} />
+                  {lang === 'es' ? 'Transmisiones en Vivo' : lang === 'zh' ? '热门直播' : 'Active Live Streams'}
+                </h2>
+                <Link to="/live" style={{ color: 'var(--brand2)', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}>
+                  {lang === 'es' ? 'Ver Todos' : lang === 'zh' ? '查看全部' : 'View All'} &rarr;
+                </Link>
+              </div>
+              <div className="home-live-channels-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                {liveChannels.map(channel => (
+                  <Link to={`/live?channel=${channel.id}`} key={channel.id} className="home-live-channel-card" style={{ display: 'flex', flexDirection: 'column', background: 'var(--panel)', borderRadius: '12px', border: '1px solid var(--line)', overflow: 'hidden', textDecoration: 'none', color: 'inherit', transition: 'all 0.2s ease' }}>
+                    <div className="home-live-thumb-wrapper" style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', background: '#000' }}>
+                      {channel.thumbnail ? (
+                        <img src={`${API_URL}${channel.thumbnail}`} alt={channel.name} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #7209b7, #f72585)', color: '#fff', fontWeight: 700, fontSize: '14px' }}>LIVE</div>
+                      )}
+                      <span className="home-live-badge" style={{ position: 'absolute', top: '8px', left: '8px', background: '#ff4d6d', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px' }}>LIVE</span>
+                    </div>
+                    <div style={{ padding: '12px' }}>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{channel.name}</h4>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>@{channel.host?.email.split('@')[0] || 'host'}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="home-video-rail-section" aria-label="Browse videos">
             <button
