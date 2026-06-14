@@ -59,6 +59,8 @@ function Home() {
   const timerRef = useRef(null);
   const progressRef = useRef(null);
   const videoRailRef = useRef(null);
+  const previewTimerRef = useRef(null);
+  const [hoverPreviewId, setHoverPreviewId] = useState(null);
   
   // Simple Announcements
   const [simpleAnnouncements, setSimpleAnnouncements] = useState([]);
@@ -562,6 +564,31 @@ function Home() {
     return getVideoUrl(video.videoUrl);
   };
 
+  const clearHoverPreviewTimer = useCallback(() => {
+    if (previewTimerRef.current) {
+      clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+  }, []);
+
+  const startHoverPreview = useCallback((videoId) => {
+    clearHoverPreviewTimer();
+    setHoverPreviewId(videoId);
+    previewTimerRef.current = setTimeout(() => {
+      setHoverPreviewId(null);
+      previewTimerRef.current = null;
+    }, 5000);
+  }, [clearHoverPreviewTimer]);
+
+  const stopHoverPreview = useCallback(() => {
+    clearHoverPreviewTimer();
+    setHoverPreviewId(null);
+  }, [clearHoverPreviewTimer]);
+
+  useEffect(() => {
+    return () => clearHoverPreviewTimer();
+  }, [clearHoverPreviewTimer]);
+
   return (
     <div className="home-redesign-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Header
@@ -796,7 +823,13 @@ function Home() {
 
             <div className="home-video-rail" ref={videoRailRef}>
               {filteredVideos.map((video) => (
-                <Link key={video.id} to={`/watch/${video.id}`} className="home-video-rail-card">
+                <Link
+                  key={video.id}
+                  to={`/watch/${video.id}`}
+                  className="home-video-rail-card"
+                  onMouseEnter={() => startHoverPreview(video.id)}
+                  onMouseLeave={stopHoverPreview}
+                >
                   <div className="home-video-rail-thumb">
                     {getVideoThumbnail(video) ? (
                       <img src={getVideoThumbnail(video)} alt={video.title || 'Video'} loading="lazy" />
@@ -815,6 +848,23 @@ function Home() {
                           <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
                       </div>
+                    )}
+                    {hoverPreviewId === video.id && getVideoSrc(video) && (
+                      <video
+                        className="home-thumbnail-preview-video"
+                        src={getVideoSrc(video)}
+                        autoPlay
+                        muted
+                        playsInline
+                        preload="metadata"
+                        onLoadedMetadata={(e) => {
+                          e.currentTarget.currentTime = 0;
+                          e.currentTarget.play().catch(() => {});
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     )}
                     <span className="home-video-rail-views">{formatCount(video.views || 0)} {t.home.views}</span>
                   </div>
@@ -1116,6 +1166,8 @@ function Home() {
                   key={video.id}
                   to={`/watch/${video.id}`}
                   className="home-card"
+                  onMouseEnter={() => startHoverPreview(video.id)}
+                  onMouseLeave={stopHoverPreview}
                 >
                   {/* Thumbnail */}
                   <div className="home-card-thumb">
@@ -1144,6 +1196,23 @@ function Home() {
                           </svg>
                         </div>
                       </div>
+                    )}
+                    {hoverPreviewId === video.id && getVideoSrc(video) && (
+                      <video
+                        className="home-thumbnail-preview-video"
+                        src={getVideoSrc(video)}
+                        autoPlay
+                        muted
+                        playsInline
+                        preload="metadata"
+                        onLoadedMetadata={(e) => {
+                          e.currentTarget.currentTime = 0;
+                          e.currentTarget.play().catch(() => {});
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
                     )}
                     <div className="home-card-play">
                       <div style={{

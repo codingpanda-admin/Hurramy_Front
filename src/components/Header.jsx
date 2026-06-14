@@ -8,6 +8,12 @@ import { getAvatarUrl } from '../utils/mediaUtils';
 function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onScrollChange, onOpenInstructions }) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [langOpen, setLangOpen] = useState(false);
+  const [textSizeOpen, setTextSizeOpen] = useState(false);
+  const [siteTextSize, setSiteTextSize] = useState(() => {
+    const storedSize = localStorage.getItem('siteTextSize') || 'normal';
+    if (storedSize === 'large') return 'larger';
+    return ['normal', 'larger', 'largest'].includes(storedSize) ? storedSize : 'normal';
+  });
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileSearchVisible, setMobileSearchVisible] = useState(true);
@@ -22,6 +28,7 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
   const navigate = useNavigate();
   const location = useLocation();
   const langRef = useRef(null);
+  const textSizeRef = useRef(null);
   const userMenuRef = useRef(null);
   const searchRef = useRef(null);
   const mobileSearchRef = useRef(null);
@@ -29,6 +36,16 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
 
   const t = translations[currentLang] || translations.en;
   const showInstructionsCue = location.pathname === '/' && localStorage.getItem('homeInstructionsSeen') !== 'true';
+  const textSizeOptions = [
+    { code: 'normal', label: 'Normal', sample: 'A' },
+    { code: 'larger', label: 'Larger', sample: 'A+' },
+    { code: 'largest', label: 'Largest', sample: 'A++' },
+  ];
+  const textSizeLabels = {
+    normal: 'Normal',
+    larger: 'Larger',
+    largest: 'Largest',
+  };
   const navItems = [
     { to: '/', label: t.sidebar?.home || 'Home' },
     { to: '/trending', label: t.sidebar?.trending || 'Trending' },
@@ -193,6 +210,83 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     localStorage.setItem('appLanguage', currentLang);
   }, [currentLang]);
 
+  useEffect(() => {
+    document.documentElement.dataset.siteTextSize = siteTextSize;
+    localStorage.setItem('siteTextSize', siteTextSize);
+
+    const scaleMap = {
+      normal: 1,
+      larger: 1.125,
+      largest: 1.25,
+    };
+    const scale = scaleMap[siteTextSize] || 1;
+    const selector = [
+      'a',
+      'button',
+      'input',
+      'textarea',
+      'select',
+      'label',
+      'p',
+      'span',
+      'strong',
+      'em',
+      'small',
+      'li',
+      'td',
+      'th',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      '[class*="title"]',
+      '[class*="label"]',
+      '[class*="text"]',
+      '[class*="copy"]',
+      '[class*="meta"]',
+      '[class*="name"]',
+      '[class*="btn"]',
+    ].join(',');
+
+    const applyTextScale = () => {
+      const elements = Array.from(document.querySelectorAll(selector))
+        .filter((el) => !el.closest('svg') && el.offsetParent !== null);
+
+      if (scale === 1) {
+        elements.forEach((el) => {
+          if (el.dataset.baseFontSize) {
+            el.style.fontSize = '';
+            delete el.dataset.baseFontSize;
+          }
+        });
+        return;
+      }
+
+      const snapshots = elements.map((el) => {
+        const base = el.dataset.baseFontSize || window.getComputedStyle(el).fontSize;
+        return { el, base };
+      });
+
+      snapshots.forEach(({ el, base }) => {
+        el.dataset.baseFontSize = base;
+        const numericBase = parseFloat(base);
+        if (Number.isFinite(numericBase)) {
+          el.style.fontSize = `${numericBase * scale}px`;
+        }
+      });
+    };
+
+    applyTextScale();
+    const observer = new MutationObserver(() => {
+      window.requestAnimationFrame(applyTextScale);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => observer.disconnect();
+  }, [siteTextSize]);
+
   const handleCloseInstructions = () => {
     localStorage.setItem('homeInstructionsSeen', 'true');
     setInstructionsOpen(false);
@@ -202,6 +296,12 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     localStorage.setItem('homeInstructionsSeen', 'true');
     setInstructionsOpen(false);
     setLangOpen(true);
+  };
+
+  const handleOpenTextSizeFromInstructions = () => {
+    localStorage.setItem('homeInstructionsSeen', 'true');
+    setInstructionsOpen(false);
+    setTextSizeOpen(true);
   };
 
   const handleLogout = () => {
@@ -283,10 +383,16 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
     window.location.reload();
   };
 
+  const handleTextSizeSelect = (newSize) => {
+    setSiteTextSize(newSize);
+    setTextSizeOpen(false);
+  };
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handler = (e) => {
       if (langRef.current && !langRef.current.contains(e.target)) setLangOpen(false);
+      if (textSizeRef.current && !textSizeRef.current.contains(e.target)) setTextSizeOpen(false);
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setUserMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
@@ -305,6 +411,16 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
       <circle cx="12" cy="12" r="10"/>
       <path d="M12 16v-4"/>
       <path d="M12 8h.01"/>
+    </svg>
+  );
+  const IconTextSize = (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7V4h11v3"/>
+      <path d="M9.5 20V4"/>
+      <path d="M7 20h5"/>
+      <path d="M15 13v-2h5v2"/>
+      <path d="M17.5 20v-9"/>
+      <path d="M16 20h3"/>
     </svg>
   );
   const IconPlus = (
@@ -512,6 +628,33 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
         </div>
 
         <div className="header-actions">
+          {/* Site text size */}
+          <div className="header-lang-wrapper" ref={textSizeRef}>
+            <button
+              className="iconBtn header-lang-btn"
+              onClick={() => setTextSizeOpen(p => !p)}
+              aria-label={`Adjust site text size. Current: ${textSizeLabels[siteTextSize] || textSizeLabels.normal}`}
+              title={`Text size: ${textSizeLabels[siteTextSize] || textSizeLabels.normal}`}
+            >
+              {IconTextSize}
+            </button>
+            {textSizeOpen && (
+              <div className="header-lang-dropdown header-text-size-dropdown">
+                {textSizeOptions.map((size) => (
+                  <button
+                    key={size.code}
+                    className={`header-lang-option${siteTextSize === size.code ? ' active' : ''}`}
+                    onClick={() => handleTextSizeSelect(size.code)}
+                  >
+                    <span className="header-text-size-sample">{size.sample}</span>
+                    <span className="header-lang-label">{size.label}</span>
+                    {siteTextSize === size.code && IconCheck}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Language */}
           <div className="header-lang-wrapper" ref={langRef}>
             <button className="iconBtn header-lang-btn" onClick={() => setLangOpen(p => !p)} aria-label="Change language" title="Change language">
@@ -900,6 +1043,19 @@ function Header({ onSearch, onToggleSidebar, videos = [], initialQuery = '', onS
               {IconGlobe}
             </button>
             <span>Click this button to select your preferred language.</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
+            <button
+              type="button"
+              className="iconBtn header-lang-btn"
+              onClick={handleOpenTextSizeFromInstructions}
+              aria-label="Adjust site text size"
+              title="Adjust text size"
+              style={{ flex: '0 0 auto' }}
+            >
+              {IconTextSize}
+            </button>
+            <span>Click this button to select the text size for your viewing preference.</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'rgba(234,240,255,0.86)', fontSize: '14px', lineHeight: 1.5 }}>
             <button
